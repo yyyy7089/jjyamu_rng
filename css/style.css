@@ -20,7 +20,7 @@ button,select{font:inherit;color:inherit}
 
 header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;
   max-width:1180px;margin:0 auto;padding:22px 20px 10px}
-h1{font-family:var(--display);font-weight:400;font-size:40px;line-height:1;margin:0;letter-spacing:-.5px}
+h1{user-select:none;-webkit-user-select:none;font-family:var(--display);font-weight:400;font-size:40px;line-height:1;margin:0;letter-spacing:-.5px}
 .stats{display:flex;gap:8px;flex-wrap:wrap}
 .stat{background:var(--panel);border:1.5px solid var(--line);border-radius:999px;padding:4px 14px;font-size:14px;color:var(--muted)}
 .stat b{font-family:var(--display);font-weight:400;font-size:19px;color:var(--ink);margin-left:4px}
@@ -142,6 +142,8 @@ dialog .stage{width:100%;clear:both}
 .fx img.pix{image-rendering:pixelated}
 .ov{position:absolute;inset:0;pointer-events:none;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center}
 .layer{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.orbit{position:absolute;inset:0;z-index:12;pointer-events:none;animation:k-spin 6s linear infinite}
+.orbit .sat{position:absolute;left:50%;top:12%;width:17%;height:17%;margin:-8.5% 0 0 -8.5%;object-fit:contain;animation:k-spin 6s linear infinite reverse;-webkit-user-drag:none}
 .badges{z-index:15}
 .badge{position:absolute;bottom:3.5%;width:16%;height:16%;object-fit:contain;filter:drop-shadow(0 .4cqw .6cqw rgba(0,0,0,.35));-webkit-user-drag:none}
 .mini *,.mini *::before,.mini *::after{animation-play-state:paused!important}
@@ -162,7 +164,9 @@ dialog .stage{width:100%;clear:both}
 .a-jitter{animation:k-jitter .9s steps(1) infinite}
 @keyframes k-jitter{0%{transform:none}20%{transform:translate(1.5cqw,0) skewX(6deg)}24%{transform:none}60%{transform:translate(-1cqw,.5cqw)}63%{transform:none}}
 .a-hue{animation:k-hue 5s linear infinite}
-.a-dori{animation:k-dori 2s steps(1) infinite}
+.a-3d{animation:k-3d 4s linear infinite}
+@keyframes k-3d{from{transform:perspective(140cqw) rotateY(0deg)}to{transform:perspective(140cqw) rotateY(360deg)}}
+.a-dori{animation:k-dori .66s steps(1) infinite}
 @keyframes k-dori{0%{transform:scaleX(1)}50%{transform:scaleX(-1)}}
 @keyframes k-hue{to{filter:hue-rotate(360deg)}}
 
@@ -173,7 +177,7 @@ dialog .stage{width:100%;clear:both}
 @keyframes k-flicker{0%,100%{opacity:1}47%{opacity:.55}50%{opacity:1}83%{opacity:.7}}
 .o-holo{background:linear-gradient(115deg,#ff6fa5,#ffd36e,#6fffc0,#6fc4ff,#c46fff,#ff6fa5) 0 0/300% 300%;mix-blend-mode:overlay;opacity:.95;animation:k-holo 4s linear infinite}
 @keyframes k-holo{to{background-position:300% 300%}}
-.o-flash{background:#fff;opacity:0;animation:k-flash 3s ease-in-out infinite}
+.o-flash{background:#fff;opacity:0;animation:k-flash 1s ease-in-out infinite}
 @keyframes k-flash{0%,50%{opacity:0}68%{opacity:.95}86%,100%{opacity:0}}
 .o-gold{background:linear-gradient(135deg,#7a5a0c,#f5da6a 30%,#b8860b 55%,#fff0a8 75%,#9a7414);mix-blend-mode:hard-light;opacity:.85}
 .o-shine{background:linear-gradient(105deg,transparent 42%,rgba(255,255,235,.95) 50%,transparent 58%) 0 0/300% 100%;mix-blend-mode:screen;animation:k-shine 2.8s ease-in-out infinite}
@@ -203,9 +207,166 @@ dialog .stage{width:100%;clear:both}
 @keyframes k-bob{50%{transform:translateY(-1.8cqh) rotate(8deg)}}
 .rays{position:absolute;inset:-45%;background:repeating-conic-gradient(from 0deg,rgba(255,214,90,.38) 0 9deg,transparent 9deg 18deg);animation:k-spin 24s linear infinite}
 
+
+/* ===== 초희귀 속성 ===== */
+.aurora-band{position:absolute;left:-30%;width:160%;height:26%;border-radius:50%;mix-blend-mode:screen;opacity:.75;
+  animation:k-aurora 9s ease-in-out infinite alternate}
+@keyframes k-aurora{0%{transform:translateX(-8%) skewY(-6deg) scaleY(.8)}50%{transform:translateX(6%) skewY(4deg) scaleY(1.25)}100%{transform:translateX(-3%) skewY(-2deg) scaleY(.95)}}
+.o-aurora{background:linear-gradient(100deg,rgba(60,255,180,.55),rgba(60,200,255,.45),rgba(170,110,255,.55),rgba(60,255,180,.55)) 0 0/300% 100%;
+  mix-blend-mode:soft-light;animation:k-holo 6s linear infinite}
+.bokeh{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.9),rgba(255,170,205,.55) 45%,transparent 70%);
+  opacity:.7;animation:k-bokeh 10s ease-in-out infinite alternate}
+@keyframes k-bokeh{from{transform:translate(0,0) scale(.9)}to{transform:translate(4cqw,-5cqh) scale(1.1)}}
+.pt-petal{border-radius:150% 0 150% 0;background:radial-gradient(circle at 25% 25%,#fff4f8 0,#ffb3cf 45%,#ff6fa3 100%);
+  box-shadow:0 .2cqw .8cqw rgba(200,60,120,.35);animation:k-petal 8s linear infinite}
+@keyframes k-petal{0%{transform:translate(0,-8cqh) rotate(0) rotateX(0)}25%{transform:translate(-6cqw,22cqh) rotate(100deg) rotateX(50deg)}50%{transform:translate(-10cqw,50cqh) rotate(200deg) rotateX(0)}75%{transform:translate(-17cqw,78cqh) rotate(310deg) rotateX(50deg)}100%{transform:translate(-22cqw,110cqh) rotate(420deg) rotateX(0)}}
+.meteor{position:absolute;height:.8cqw;border-radius:1cqw;opacity:0;
+  background:linear-gradient(90deg,#fff 0,#e6eeff 4%,rgba(150,185,255,.7) 22%,transparent);
+  box-shadow:0 0 1.2cqw rgba(190,215,255,.9);animation:k-meteor 4s linear infinite}
+@keyframes k-meteor{0%{transform:translate(30cqw,-30cqh) rotate(-45deg);opacity:0}4%{opacity:1}45%{opacity:1}55%{transform:translate(-70cqw,70cqh) rotate(-45deg);opacity:0}100%{transform:translate(-70cqw,70cqh) rotate(-45deg);opacity:0}}
+.horizon{position:absolute;left:-10%;right:-10%;bottom:-30%;height:55%;border-radius:50%;
+  background:radial-gradient(ellipse at 50% 0,rgba(190,120,255,.55),transparent 65%)}
+.o-starlit{background:linear-gradient(200deg,rgba(160,195,255,.55),transparent 60%);mix-blend-mode:soft-light}
+.prism-rays{position:absolute;inset:-50%;mix-blend-mode:multiply;opacity:.55;
+  background:repeating-conic-gradient(from 0deg,rgba(255,170,215,.55) 0 5deg,rgba(170,215,255,.55) 5deg 10deg,rgba(205,180,255,.55) 10deg 15deg,transparent 15deg 30deg);
+  animation:k-spin 50s linear infinite reverse}
+.shard-wrap{position:absolute;transform:translate(-50%,-50%);animation:k-shardbob 3.4s ease-in-out infinite;perspective:40cqw}
+@keyframes k-shardbob{50%{transform:translate(-50%,-62%)}}
+.shard{width:100%;height:100%;clip-path:polygon(50% 0,100% 36%,50% 100%,0 36%);
+  background:linear-gradient(135deg,#fff 0,#8fdcff 26%,#9d84ff 50%,#ff9ee0 72%,#fff 100%) 0 0/200% 200%;
+  animation:k-shardspin 4.5s linear infinite,k-holo 3s linear infinite}
+@keyframes k-shardspin{to{transform:rotateY(360deg)}}
+.o-prism{background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.9) 40%,transparent 50%) 0 0/250% 100%,
+  conic-gradient(from 45deg,#ffb3d9,#b3e5ff,#c9b3ff,#b3ffd9,#fff0b3,#ffb3d9);mix-blend-mode:overlay;opacity:.6;
+  animation:k-prism 2.6s ease-in-out infinite}
+@keyframes k-prism{0%{background-position:130% 0,0 0}100%{background-position:-30% 0,0 0}}
+.mcircle-wrap{position:absolute;left:50%;top:50%;width:94%;aspect-ratio:1;transform:translate(-50%,-50%)}
+.mcircle{width:100%;height:100%;overflow:visible}
+.mcircle g{fill:none;stroke:#ffe9a8}
+.mcircle .mc-fill{fill:#fff3c4;stroke:none}
+.mc-r1{animation:k-spin 48s linear infinite}
+.mc-r2{animation:k-spin 30s linear infinite reverse}
+.mc-r3{animation:k-spin 14s linear infinite}
+.pillar{position:absolute;left:50%;top:-5%;bottom:-5%;width:48%;transform:translateX(-50%);mix-blend-mode:screen;
+  background:linear-gradient(90deg,transparent,rgba(255,236,180,.28) 30%,rgba(255,252,235,.6) 50%,rgba(255,236,180,.28) 70%,transparent);
+  animation:k-pillar 3.2s ease-in-out infinite}
+@keyframes k-pillar{50%{opacity:.6;transform:translateX(-50%) scaleX(.85)}}
+.pillar-top{position:absolute;left:0;right:0;top:-25%;height:60%;background:radial-gradient(ellipse at 50% 30%,rgba(255,248,215,.75),transparent 60%);mix-blend-mode:screen}
+.pt-mote{border-radius:50%;background:#fff8d8;box-shadow:0 0 1cqw #ffe07a,0 0 2.2cqw #ffc93a;animation:k-mote 6s ease-in-out infinite}
+@keyframes k-mote{0%{transform:translate(0,105cqh);opacity:0}15%{opacity:1}50%{transform:translate(3cqw,55cqh)}85%{opacity:1}100%{transform:translate(-2cqw,5cqh);opacity:0}}
+.o-sheen{background:linear-gradient(180deg,rgba(255,250,225,.75),rgba(255,230,160,.15) 55%,transparent 75%);mix-blend-mode:soft-light}
+
+
+/* 버튼 & 폭발 */
+.fx.is-button{cursor:pointer}
+.fx.is-button:focus-visible{outline:.8cqw solid var(--accent);outline-offset:.8cqw;border-radius:4cqw}
+.fx.frag{pointer-events:none;will-change:transform,opacity}
+.boom{z-index:14}
+.boom>*{position:absolute;left:50%;top:50%}
+.fireball{width:70%;aspect-ratio:1;border-radius:50%;translate:-50% -50%;
+  background:radial-gradient(circle,#fff 0,#fff6c8 18%,#ffc83d 34%,#ff7a1a 52%,rgba(220,40,20,.6) 66%,transparent 72%);
+  animation:k-fireball .75s cubic-bezier(.1,.8,.3,1) forwards}
+@keyframes k-fireball{0%{scale:.08;opacity:1}35%{opacity:1}100%{scale:1.55;opacity:0}}
+.shock{width:36%;aspect-ratio:1;border-radius:50%;translate:-50% -50%;border:1.4cqw solid rgba(255,245,215,.95);
+  box-shadow:0 0 3cqw rgba(255,210,120,.8);animation:k-shock .7s ease-out forwards}
+.shock.s2{animation-delay:.12s;border-width:.8cqw;opacity:0}
+@keyframes k-shock{0%{scale:.1;opacity:1}100%{scale:3.2;opacity:0}}
+.spark{width:10cqw;height:.9cqw;margin-top:-.45cqw;border-radius:1cqw;transform-origin:0 50%;
+  background:linear-gradient(90deg,transparent,#ffb13b 40%,#fff 100%);box-shadow:0 0 1.2cqw #ff9a2e;
+  rotate:var(--a);animation:k-spark .6s cubic-bezier(.1,.8,.3,1) forwards}
+@keyframes k-spark{0%{translate:0 0;opacity:1}100%{translate:calc(cos(var(--a)) * var(--d)) calc(sin(var(--a)) * var(--d));opacity:0;scale:.4 1}}
+.smoke{width:22cqw;aspect-ratio:1;border-radius:50%;translate:-50% -50%;opacity:0;
+  background:radial-gradient(circle,rgba(90,80,100,.6),rgba(90,80,100,.25) 55%,transparent 70%);animation:k-smoke 1.9s ease-out forwards}
+@keyframes k-smoke{0%{transform:translate(0,0) scale(.3);opacity:0}20%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1.7);opacity:0}}
+#alertBox{width:min(86vw,320px);text-align:center}
+#alertBox p{font-family:var(--display);font-size:26px;margin:6px 0 16px}
+#alertBox button{border:0;background:var(--accent);color:var(--accent-ink);border-radius:12px;padding:8px 26px;font-size:15px;cursor:pointer}
+
+
+/* ===== 전설 이상 전체 화면 연출 ===== */
+.cine{position:fixed;inset:0;z-index:1000;overflow:hidden;cursor:pointer;
+  padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.cine-dim{position:absolute;inset:0;background:#000;opacity:0;transition:opacity 1.2s ease}
+.cine.in .cine-dim{opacity:1}
+.cine.flash .cine-dim{opacity:0;transition:opacity 2.6s ease .5s}
+.cine.out .cine-dim{opacity:0;transition:opacity .6s}
+.cine-stars{position:absolute;inset:0;opacity:0;transition:opacity 2s}
+.cine.in .cine-stars{opacity:1}.cine.flash .cine-stars{opacity:0;transition:opacity .6s}
+.cine-stars i{position:absolute;border-radius:50%;background:#fff;animation:k-star 2.4s ease-in-out infinite}
+.cine-shake{position:absolute;inset:0;display:grid;place-items:center}
+.cine.rumble .cine-shake{animation:k-rumble .09s linear infinite}
+@keyframes k-rumble{25%{transform:translate(-2px,1px)}50%{transform:translate(2px,-1px)}75%{transform:translate(-1px,-2px)}}
+.cine-fx{position:absolute;inset:0}
+.cine-fx>*{position:absolute;left:50%;top:50%}
+.cine-rays{width:220vmax;height:220vmax;margin:-110vmax 0 0 -110vmax;opacity:0;scale:.35;
+  background:repeating-conic-gradient(from 0deg,color-mix(in srgb,var(--c1) 55%,transparent) 0 5deg,transparent 5deg 15deg);
+  -webkit-mask:radial-gradient(circle,#000 0,rgba(0,0,0,.6) 18%,transparent 45%);mask:radial-gradient(circle,#000 0,rgba(0,0,0,.6) 18%,transparent 45%);
+  animation:k-spin 18s linear infinite}
+.cine.charge .cine-rays{opacity:.45;scale:.6;transition:opacity var(--hold) ease-in,scale var(--hold) ease-in}
+.cine.flash .cine-rays{scale:1.2;transition:scale 1.4s cubic-bezier(.1,.8,.3,1);animation:k-spin 18s linear infinite,k-raysburst 2.6s ease-out forwards}
+@keyframes k-raysburst{0%{opacity:.5}12%{opacity:1}100%{opacity:0}}
+.cine.out .cine-rays{opacity:0;transition:opacity .6s}
+.cine-streaks i{position:absolute;left:0;top:0;height:3px;margin-top:-1.5px;border-radius:3px;transform-origin:0 50%;
+  background:linear-gradient(90deg,#fff,var(--c1) 30%,transparent);box-shadow:0 0 10px var(--c1)}
+.cine-core{width:26vmin;height:26vmin;margin:-13vmin 0 0 -13vmin;border-radius:50%;
+  background:radial-gradient(circle,#fff 0,#fff 12%,var(--c1) 32%,color-mix(in srgb,var(--c2) 60%,transparent) 52%,transparent 70%);
+  scale:0;opacity:0}
+.cine.charge .cine-core{opacity:1;scale:1;transition:scale var(--hold) cubic-bezier(.6,0,.9,.5),opacity .8s;animation:k-corepulse .55s ease-in-out infinite alternate}
+@keyframes k-corepulse{from{filter:brightness(.8)}to{filter:brightness(1.5)}}
+.cine.flash .cine-core{animation:none;scale:12;opacity:0;transition:scale 1s cubic-bezier(.1,.8,.3,1),opacity 1.2s ease-out}
+.cine-ring{width:30vmin;height:30vmin;margin:-15vmin 0 0 -15vmin;border-radius:50%;border:6px solid var(--c1);
+  box-shadow:0 0 30px var(--c1),inset 0 0 20px var(--c1);opacity:0}
+.cine.flash .cine-ring{animation:k-cring 1.6s cubic-bezier(.1,.8,.3,1) forwards}
+.cine.flash .cine-ring.r2{animation-delay:.18s;border-color:var(--c2);box-shadow:0 0 30px var(--c2)}
+.cine.flash .cine-ring.r3{animation-delay:.36s;border-width:3px}
+.cine.lv4 .cine-ring.r2,.cine.lv4 .cine-ring.r3,.cine.lv5 .cine-ring.r3{display:none}
+@keyframes k-cring{0%{scale:.2;opacity:1}100%{scale:7;opacity:0}}
+.cine-text{position:relative;z-index:2;text-align:center;max-width:92vw;pointer-events:none}
+.cine-text b{display:block;font-family:var(--display);font-weight:400;font-size:clamp(64px,16vw,170px);line-height:1;color:#fff;
+  text-shadow:0 0 18px var(--c1),0 0 48px var(--c1),0 0 90px var(--c2);opacity:0;scale:2.4}
+.cine.flash .cine-text b{opacity:1;scale:1;transition:opacity .25s,scale .6s cubic-bezier(.2,1.5,.4,1)}
+.cine.out .cine-text{opacity:0;transition:opacity .4s}
+.cine-num{display:block;margin-top:14px;font-family:var(--display);font-size:clamp(22px,5vw,50px);line-height:1.2;color:#fff;
+  font-variant-numeric:tabular-nums;overflow-wrap:anywhere;text-shadow:0 0 14px var(--c1);opacity:0;transition:opacity .8s}
+.cine.charge .cine-num{opacity:1}
+.cine.rainbow .cine-text b{background:linear-gradient(90deg,#ff4d6d,#ffb84d,#f7ff4d,#4dff88,#4dd2ff,#7a4dff,#ff4dd8,#ff4d6d) 0 0/300% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;animation:k-tierflow 2s linear infinite;
+  text-shadow:none;filter:drop-shadow(0 0 20px rgba(255,255,255,.6))}
+.cine.rainbow .cine-fx{animation:k-hue 2.5s linear infinite}
+.cine-flash{position:absolute;inset:0;background:radial-gradient(circle,#fff 0,#fff 35%,var(--c1) 100%);opacity:0;pointer-events:none}
+.cine.flash .cine-flash{animation:k-cflash 1.6s ease-out forwards}
+@keyframes k-cflash{0%{opacity:0}6%{opacity:1}20%{opacity:.95}100%{opacity:0}}
+.cine-skip{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom,0px));left:0;right:0;margin:0;text-align:center;
+  color:rgba(255,255,255,.5);font-size:13px;opacity:0;transition:opacity .4s 1s;pointer-events:none}
+.cine.in .cine-skip{opacity:1}.cine.flash .cine-skip{opacity:0;transition:opacity .2s}
+
+/* 특성 연출 */
+.cine-sigil{width:34vmin;height:34vmin;margin:-17vmin 0 0 -17vmin;opacity:0;scale:.3}
+.cine-sigil i{position:absolute;inset:0;border:3px solid var(--c1);box-shadow:0 0 18px var(--c1),inset 0 0 18px var(--c1);rotate:45deg;
+  animation:k-spin 9s linear infinite}
+.cine-sigil i:nth-child(2){inset:12%;border-color:var(--c2);box-shadow:0 0 16px var(--c2);animation-direction:reverse;animation-duration:6s;rotate:0deg}
+.cine-sigil i:nth-child(3){inset:30%;border-radius:50%;border-width:2px;animation-duration:4s}
+.cine.trait .cine-core{display:none}
+.cine.trait.charge .cine-sigil{opacity:1;scale:1;transition:scale var(--hold) cubic-bezier(.3,0,.6,1),opacity 1s}
+.cine.trait.flash .cine-sigil{scale:4;opacity:0;transition:scale 1s cubic-bezier(.1,.8,.3,1),opacity .9s ease-out}
+.cine:not(.trait) .cine-sigil{display:none}
+.cine-streaks i.rise{height:auto;margin:0;border-radius:50%;background:#fff;box-shadow:0 0 8px var(--c1),0 0 16px var(--c2)}
+.cine-cap{display:block;margin-bottom:10px;font-family:var(--display);font-size:clamp(18px,3.4vw,28px);letter-spacing:.3em;color:var(--c1);
+  text-shadow:0 0 12px var(--c1);opacity:0;transition:opacity 1s}
+.cine.charge .cine-cap{opacity:1}
+.cine-traits{display:block;margin-top:12px;font-style:normal;font-family:var(--display);font-size:clamp(18px,3.6vw,30px);color:#fff;
+  text-shadow:0 0 12px var(--t1,var(--c1)),0 0 28px var(--t2,var(--c2));opacity:0;translate:0 10px}
+.cine.flash .cine-traits{opacity:1;translate:0 0;transition:opacity .5s .35s,translate .6s .35s}
+.cine-spot{position:fixed;pointer-events:none;box-shadow:0 0 0 300vmax rgba(0,0,0,.8),0 0 50px 10px var(--c1);opacity:0;transition:opacity 1s ease}
+.cine-spot.on{opacity:1}
+.cine.out .cine-spot{opacity:0;transition:opacity .6s}
+.cine.flash .cine-text{animation:k-textout .8s ease 2.2s forwards}
+@keyframes k-textout{to{opacity:0;translate:0 -12px}}
+
 /* particles */
 .pt{position:absolute;top:0;left:0;line-height:1;will-change:transform}
 .pt-sparkle{color:#FFD84A;text-shadow:0 0 1.5cqw #fff3a0;animation:k-twinkle 2s ease-in-out infinite}
+.pt-psparkle{color:#B45CFF;text-shadow:0 0 1cqw #fff,0 0 2cqw #9D4EDD,0 0 3.5cqw #7B2CBF;animation:k-twinkle 1.8s ease-in-out infinite}
 .pt-gold{color:#FFF6CC;text-shadow:0 0 2cqw #FFC93A,0 0 4cqw #FFC93A;animation:k-twinkle 2.2s ease-in-out infinite}
 @keyframes k-twinkle{0%,100%{transform:scale(0) rotate(0);opacity:0}50%{transform:scale(1) rotate(90deg);opacity:1}}
 .pt-snow{border-radius:50%;background:#fff;box-shadow:0 0 .8cqw rgba(160,190,255,.9);animation:k-fall 7s linear infinite}

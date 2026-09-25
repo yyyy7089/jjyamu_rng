@@ -162,6 +162,8 @@ dialog .stage{width:100%;clear:both}
 .a-jitter{animation:k-jitter .9s steps(1) infinite}
 @keyframes k-jitter{0%{transform:none}20%{transform:translate(1.5cqw,0) skewX(6deg)}24%{transform:none}60%{transform:translate(-1cqw,.5cqw)}63%{transform:none}}
 .a-hue{animation:k-hue 5s linear infinite}
+.a-dori{animation:k-dori 2s steps(1) infinite}
+@keyframes k-dori{0%{transform:scaleX(1)}50%{transform:scaleX(-1)}}
 @keyframes k-hue{to{filter:hue-rotate(360deg)}}
 
 /* overlays */
@@ -171,6 +173,8 @@ dialog .stage{width:100%;clear:both}
 @keyframes k-flicker{0%,100%{opacity:1}47%{opacity:.55}50%{opacity:1}83%{opacity:.7}}
 .o-holo{background:linear-gradient(115deg,#ff6fa5,#ffd36e,#6fffc0,#6fc4ff,#c46fff,#ff6fa5) 0 0/300% 300%;mix-blend-mode:overlay;opacity:.95;animation:k-holo 4s linear infinite}
 @keyframes k-holo{to{background-position:300% 300%}}
+.o-flash{background:#fff;opacity:0;animation:k-flash 3s ease-in-out infinite}
+@keyframes k-flash{0%,50%{opacity:0}68%{opacity:.95}86%,100%{opacity:0}}
 .o-gold{background:linear-gradient(135deg,#7a5a0c,#f5da6a 30%,#b8860b 55%,#fff0a8 75%,#9a7414);mix-blend-mode:hard-light;opacity:.85}
 .o-shine{background:linear-gradient(105deg,transparent 42%,rgba(255,255,235,.95) 50%,transparent 58%) 0 0/300% 100%;mix-blend-mode:screen;animation:k-shine 2.8s ease-in-out infinite}
 @keyframes k-shine{0%{background-position:120% 0}60%,100%{background-position:-20% 0}}

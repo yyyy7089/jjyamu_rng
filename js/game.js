@@ -62,7 +62,7 @@ let PIXEL_IMAGE = BASE_IMAGE;
 
 /* ---------------- rendering engine ---------------- */
 function newCtx(){return {colors:[],img:[],tintK:1,transforms:[],anims:[],fxAnims:[],shadows:[],overlays:[],
-  bg:[],frames:[],particles:[],acc:[],behind:[],badges:[],opacity:1,pixel:false,clone:false}}
+  bg:[],frames:[],particles:[],acc:[],behind:[],badges:[],invisible:false,opacity:1,pixel:false,clone:false}}
 
 function spawn(layer,type,n,mini){
   const count=mini?Math.ceil(n/3):n;
@@ -119,12 +119,13 @@ function renderStage(el,ids,opt={}){
   if(c.opacity<1) fx.style.opacity=c.opacity;
   const im=document.createElement("img"); im.className="base"+(c.pixel?" pix":""); im.src=src; im.alt="";
   if(c.img.length) im.style.filter=c.img.join(" ");
+  if(c.invisible) im.style.visibility="hidden";
   fx.appendChild(im);
   const mask=`url("${src}")`;
   const addOv=(cls,style)=>{const d=document.createElement("div");d.className="ov "+(cls||"");
     d.style.webkitMaskImage=mask;d.style.maskImage=mask;Object.assign(d.style,style||{});fx.appendChild(d)};
-  if(c.colors.length) addOv("",{background:mixColors(c.colors),mixBlendMode:"multiply",opacity:Math.min(.8,.72*c.tintK+.08)});
-  for(const o of c.overlays) addOv(o);
+  if(!c.invisible&&c.colors.length) addOv("",{background:mixColors(c.colors),mixBlendMode:"multiply",opacity:Math.min(.8,.72*c.tintK+.08)});
+  if(!c.invisible) for(const o of c.overlays) addOv(o);
   for(const a of c.acc){const d=document.createElement("div");d.className="acc "+a.cls;if(a.text)d.textContent=a.text;fx.appendChild(d)}
 
   if(c.clone){
@@ -154,7 +155,7 @@ function miniStage(ids,size){
 }
 
 /* ---------------- state & storage ---------------- */
-const COOLDOWN=5000, HISTORY_MAX=100, LS_KEY="henshin-gacha-v1";
+const COOLDOWN=2000, HISTORY_MAX=100, LS_KEY="henshin-gacha-v1";
 let state={total:0,lastRollAt:0,history:[],combos:{},attrs:{}};
 let lastRollInfo=null; // {ids, newAttrs:Set, newCombo, t}
 

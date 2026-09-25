@@ -15,6 +15,7 @@
      particles   : 입자 {type, n, back}
      acc         : 이미지에 붙는 장식
      behind      : 배경 바로 위 특수 레이어
+     invisible   : true면 이미지와 이미지 모양 레이어를 숨김 (장식·배경·입자·배지는 그대로)
      badges      : 왼쪽 아래 배지 {src, p} — 덜 희귀한 순으로 겹치지 않게 나란히 표시
    ============================================================ */
 const ATTRS = [
@@ -45,10 +46,12 @@ const ATTRS = [
   {id:"invert",  name:"반전",       p:600,     apply:c=>{c.img.push("invert(1)");c.tintK*=.8}},
   {id:"dots",    name:"물방울",     p:800,     apply:c=>c.overlays.push("o-dots")},
   {id:"tiny",    name:"꼬마",       p:1000,     apply:c=>c.transforms.push("scale(.62)")},
+  {id:"blink",   name:"점멸",       p:1234,   apply:c=>c.overlays.push("o-flash")},
   {id:"shake",   name:"덜덜",       p:1300,     apply:c=>c.anims.push("a-shake")},
   {id:"bang",    name:"느낌표",     p:1700,     apply:c=>c.acc.push({cls:"acc-bang",text:"!"})},
   {id:"giant",   name:"거대",       p:2000,   apply:c=>c.transforms.push("scale(2)")},
   {id:"wood",    name:"액자",       p:2200,     apply:c=>c.frames.push("f-wood")},
+  {id:"dori",    name:"도리도리",   p:2500,   apply:c=>c.anims.push("a-dori")},
   {id:"snow",    name:"눈",         p:3000,     apply:c=>c.particles.push({type:"snow",n:24})},
   {id:"neon",    name:"네온",       p:4000,    apply:c=>c.shadows.push(u=>`drop-shadow(0 0 ${1.2*u}px #3cf6ff) drop-shadow(0 0 ${3*u}px #3cf6ff)`)},
   {id:"ghost",   name:"유령",       p:5000,    apply:c=>{c.opacity*=.42}},
@@ -65,6 +68,7 @@ const ATTRS = [
   {id:"glitch",  name:"잔상",       p:70000,   apply:c=>{c.shadows.push(u=>`drop-shadow(${1.3*u}px 0 0 rgba(255,0,90,.75)) drop-shadow(-${1.3*u}px 0 0 rgba(0,225,255,.75))`);c.anims.push("a-jitter")}},
   {id:"crown",   name:"왕관",       p:90000,   apply:c=>c.acc.push({cls:"acc-crown"})},
   {id:"rframe",  name:"오색테두리", p:120000, apply:c=>c.frames.push("f-rainbow")},
+  {id:"invis",   name:"투명",       p:125000, apply:c=>{c.invisible=true}},
   {id:"ember",   name:"불씨",       p:150000,   apply:c=>c.particles.push({type:"ember",n:16})},
   {id:"holo",    name:"홀로그램",   p:200000,  apply:c=>c.overlays.push("o-holo")},
   {id:"gold",    name:"금박",       p:250000,  apply:c=>{c.overlays.push("o-gold");c.overlays.push("o-shine")}},

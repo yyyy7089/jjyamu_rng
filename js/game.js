@@ -230,7 +230,7 @@ function miniStage(ids,size){
 }
 
 /* ---------------- state & storage ---------------- */
-const COOLDOWN=2000, HISTORY_MAX=100, LS_KEY="henshin-gacha-v1";
+const COOLDOWN=1000, HISTORY_MAX=100, LS_KEY="henshin-gacha-v1";
 let state={total:0,lastRollAt:0,history:[],combos:{},attrs:{}};
 let lastRollInfo=null; // {ids, newAttrs:Set, newCombo, t}
 

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>jjyamu.rng</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <h1>jjyamu.rng</h1>
+  <div class="stats">
+    <span class="stat">굴린 횟수<b id="sTotal">0</b></span>
+    <span class="stat">발견한 속성<b id="sFound">0</b></span>
+    <span class="stat">모은 조합<b id="sCombos">0</b></span>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="play" aria-label="굴리기">
+    <div class="stage" id="mainStage" aria-live="polite"></div>
+    <button class="roll" id="rollBtn" type="button"><i class="fill"></i><span id="rollLabel">굴리기</span></button>
+    <p class="hint">스페이스바로도 굴릴 수 있어요. 5초마다 한 번씩 굴릴 수 있어요.</p>
+    <div class="result" id="result"></div>
+    <div class="dev" id="dev" hidden>
+      <h2>개발용 미리보기 (저장되지 않음)</h2>
+      <div class="list" id="devList"></div>
+    </div>
+    <p class="saveinfo" id="saveInfo">이 브라우저에 저장 중</p>
+  </section>
+
+  <section class="book">
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-hist" aria-selected="true" aria-controls="pane-hist">기록</button>
+      <button role="tab" id="tab-col" aria-selected="false" aria-controls="pane-col">도감</button>
+      <button role="tab" id="tab-attr" aria-selected="false" aria-controls="pane-attr">속성<small id="attrCount"></small></button>
+      <button role="tab" id="tab-credit" aria-selected="false" aria-controls="pane-credit">크레딧</button>
+    </div>
+    <div class="pane" id="pane-hist" role="tabpanel"></div>
+    <div class="pane" id="pane-col" role="tabpanel" hidden>
+      <div class="filters" id="filters"></div>
+      <div class="bar">
+        <span id="colSummary"></span>
+        <span>
+          <button class="clear" id="clearFilters" type="button" hidden>필터 지우기</button>
+          <select id="sort" aria-label="정렬">
+            <option value="rare">희귀한 순</option>
+            <option value="count">많이 뽑은 순</option>
+            <option value="recent">최근에 뽑은 순</option>
+          </select>
+        </span>
+      </div>
+      <div class="grid" id="colGrid"></div>
+      <button class="more" id="colMore" type="button" hidden>더 보기</button>
+    </div>
+    <div class="pane" id="pane-attr" role="tabpanel" hidden>
+      <p class="help">한 번이라도 뽑은 속성만 이름과 확률이 보여요.</p>
+      <div class="dex" id="dex"></div>
+    </div>
+    <div class="pane" id="pane-credit" role="tabpanel" hidden>
+      <dl class="credits">
+        <div><dt>제작</dt><dd>Claude AI를 이용해 제작됨</dd></div>
+        <div><dt>유시아 쨔무쨔무</dt><dd>윤건 님</dd></div>
+        <div><dt>난이도 얼굴</dt><dd>Geometry Dash</dd></div>
+        <div><dt>사용한 오픈소스</dt>
+          <dd>Do Hyeon 폰트</dd><p class="lic">우아한형제들, SIL Open Font License 1.1</p>
+          <dd>IBM Plex Sans KR 폰트</dd><p class="lic">IBM, SIL Open Font License 1.1</p>
+          <dd>Twemoji (💀, ☠️ 이미지)</dd><p class="lic">Twitter, Inc 및 기여자, CC-BY 4.0</p>
+          <p class="lic" style="margin-top:8px">폰트는 Google Fonts를 통해 불러옵니다. 모든 효과는 외부 라이브러리 없이 순수 HTML, CSS, JavaScript로 구현했습니다.</p>
+        </div>
+      </dl>
+    </div>
+  </section>
+</main>
+
+<dialog id="viewer">
+  <button class="x" type="button" id="closeViewer">닫기</button>
+  <div class="stage" id="viewStage"></div>
+  <div id="viewInfo" style="margin-top:14px"></div>
+</dialog>
+
+<script src="js/base-image.js"></script>
+<script src="js/badge-images.js"></script>
+<script src="js/attributes.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

@@ -680,6 +680,15 @@ $("#colMore").onclick=()=>{colLimit+=60;renderCollection()};
 /* roll button */
 const btn=$("#rollBtn");
 btn.onclick=()=>roll("manual");
+/* 키를 누르고 있어도 한 번만 굴림: 엔터/스페이스를 뗐다가 다시 눌러야 다음 굴리기 */
+const heldKeys=new Set();
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Enter"&&e.code!=="Space") return;
+  if(e.repeat||heldKeys.has(e.code)){e.preventDefault();e.stopImmediatePropagation();return}
+  heldKeys.add(e.code);
+},true);
+document.addEventListener("keyup",e=>heldKeys.delete(e.code),true);
+addEventListener("blur",()=>heldKeys.clear());
 $("#autoRoll").addEventListener("change",e=>setAuto(e.target.checked));
 renderAutoTip();
 // "2초마다"를 누르면 스위치는 그대로 두고 설명만 열고 닫음 (터치 기기용)

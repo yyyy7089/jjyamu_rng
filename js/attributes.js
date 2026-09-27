@@ -316,6 +316,7 @@ const ATTRS = [
   {id:"ghost",   name:"유령",       p:5000,    apply:c=>{c.opacity*=.42}},
   {id:"upside",  name:"거꾸로",     p:7000,    apply:c=>c.transforms.push("rotate(180deg)")},
   {id:"fisheye", name:"어안",       p:7200,   apply:c=>{c.fisheye=true;c.layers.push({back:false,build:FX.fisheye})}},
+  {id:"arrow",   name:"화살표",     p:7500,   apply:c=>c.badges.push({src:BADGE_IMAGES.arrow,p:7500})},
   {id:"double",  name:"겹테두리", p:9000,   apply:c=>c.frames.push("f-double")},
   {id:"demon",   name:"데몬",       p:10000,  apply:c=>c.badges.push({src:BADGE_IMAGES.demon,p:10000})},
   {id:"pixel",   name:"픽셀",       p:12000,    apply:c=>{c.pixel=true}},

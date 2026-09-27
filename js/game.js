@@ -85,6 +85,15 @@ function lensMap(type){
   g.putImageData(img,0,0);
   return LENS_MAP[type]=cv.toDataURL("image/png");
 }
+// 일렁이는 노이즈 왜곡 필터 (불꽃 등). scale 단위는 px
+function turbFilter(el,{freq=[.02,.06],scale=10,dur=2,oct=2}={}){
+  const id="fxf"+(++FILTER_SEQ), f=freq.join(" "), f2=freq.map(v=>(v*1.35).toFixed(4)).join(" ");
+  el.insertAdjacentHTML("beforeend",`<svg class="fdefs" aria-hidden="true"><filter id="${id}" x="-20%" y="-20%" width="140%" height="140%">
+    <feTurbulence type="fractalNoise" baseFrequency="${f}" numOctaves="${oct}" seed="5" result="n">
+      <animate attributeName="baseFrequency" dur="${dur}s" values="${f};${f2};${f}" repeatCount="indefinite"/></feTurbulence>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="${scale.toFixed(1)}" xChannelSelector="R" yChannelSelector="G"/></filter></svg>`);
+  return `url(#${id})`;
+}
 // el 안에 필터를 만들고 url(#id)를 돌려줌. size = 필터를 걸 요소의 한 변(px)
 function lensFilter(el,type,size,anim){
   const id="fxf"+(++FILTER_SEQ), S=(2*LENS_DEF[type].M*size).toFixed(1);
@@ -113,6 +122,9 @@ function spawn(layer,type,n,mini){
     else if(type==="ember"){const z=.7+r()*1;s.style.width=s.style.height=z+"cqw";s.style.left=10+r()*85+"%";dur=3+r()*3}
     else if(type==="petal"){const z=2.6+r()*2.4;s.style.width=z+"cqw";s.style.height=(z*.72)+"cqw";s.style.left=r()*110+"%";
       s.style.opacity=(.75+r()*.25).toFixed(2);dur=6+r()*5}
+    else if(type==="flake"){s.textContent="❄";s.style.fontSize=(2.4+r()*3)+"cqw";s.style.left=r()*100+"%";dur=8+r()*6}
+    else if(type==="note"){s.textContent=["♪","♫","♬"][i%3];s.style.fontSize=(4+r()*4)+"cqw";s.style.left=r()*92+"%";
+      s.style.color=["#ff7ef0","#6ff3ff","#ffe066","#b49bff"][i%4];dur=3.5+r()*2.5}
     else if(type==="rain"){s.style.left=(r()*110-5)+"%";s.style.height=(5+r()*5)+"cqw";dur=.45+r()*.35}
     else if(type==="mote"){const z=.6+r()*1;s.style.width=s.style.height=z+"cqw";s.style.left=(25+r()*50)+"%";dur=4+r()*4}
     else if(type==="star"){const z=.3+r()*.6;s.style.width=s.style.height=z+"cqw";s.style.left=r()*100+"%";s.style.top=r()*100+"%";dur=2+r()*3}
@@ -140,11 +152,19 @@ function renderStage(el,ids,opt={}){
   el.style.backgroundImage=opt.bare?"none":imgs.join(","); el.style.backgroundSize=sizes.join(",");
   const env={u,mini,live,el,ids,serial:opt.serial};
 
-  for(const b of c.behind){const d=document.createElement("div");d.className=b;el.appendChild(d)}
+  /* 그리는 순서 (아래 → 위)
+     1) 배경: 무대 배경색·그라데이션(c.bg) → 화면을 통째로 덮는 장면 레이어(scene: 하루, 신스웨이브, 만화경)
+     2) 일부가 투명한 오브젝트: 뒤쪽 입자(별 등) → 빛살 → 뒤쪽 오브젝트 레이어(오로라 띠, 마법진, 블랙홀 …)
+     3) 캐릭터 (테두리 포함)
+     4) 캐릭터 앞 효과: 앞쪽 입자·레이어, 위성
+     5) 배지 */
+  const addLayers=(isBack,scene)=>{for(const L of c.layers) if(!!L.back===isBack&&!!L.scene===scene){
+    const l=document.createElement("div");l.className="layer"+(scene?" scene":"");L.build(l,env);el.appendChild(l)}};
+  addLayers(true,true);
   const back=c.particles.filter(p=>p.back), front=c.particles.filter(p=>!p.back);
   if(back.length){const l=document.createElement("div");l.className="layer";back.forEach(p=>spawn(l,p.type,p.n,mini));el.appendChild(l)}
-  const addLayers=isBack=>{for(const L of c.layers) if(!!L.back===isBack){const l=document.createElement("div");l.className="layer";L.build(l,env);el.appendChild(l)}};
-  addLayers(true);
+  for(const b of c.behind){const d=document.createElement("div");d.className=b;el.appendChild(d)}
+  addLayers(true,false);
 
   // frames (nested so all stay visible)
   const frames=document.createElement("div"); frames.className="frames"; el.appendChild(frames);
@@ -211,7 +231,7 @@ function renderStage(el,ids,opt={}){
   }
 
   if(front.length){const l=document.createElement("div");l.className="layer";front.forEach(p=>spawn(l,p.type,p.n,mini));el.appendChild(l)}
-  addLayers(false);
+  addLayers(false,false);
 
   // satellite: plain base image orbiting the stage centre, untouched by other traits
   if(c.satellite){
@@ -480,7 +500,8 @@ function renderAutoTip(){
   const rows=AUTO_STEPS.map(([t,iv],i)=>{const nx=AUTO_STEPS[i+1];
     const range=nx?`${t?fmt(t/60e3):"처음"} ~ ${fmt(nx[0]/60e3)}`:`${fmt(t/60e3)} 이후`;
     return `<li${i===k?' class="now"':""}><span>${range}</span><b>${iv/1000}초</b></li>`}).join("");
-  const html=`<strong>자동 굴리기 간격</strong><ul>${rows}</ul><em>켜 둔 시간이 길어질수록 느려져요. 껐다 켜면 처음부터 다시 시작해요.</em>`;
+  const html=`<strong>자동 굴리기 간격</strong><ul>${rows}</ul><em>켜 둔 시간이 길어질수록 느려져요. 껐다 켜면 처음부터 다시 시작해요.</em>
+    <em class="focus-note">다른 탭으로 옮기거나 창을 최소화해서 이 화면이 보이지 않으면 자동 굴리기가 잠시 멈춰요. 다시 돌아오면 바로 이어서 굴려요. 다른 창을 띄워 두더라도 이 화면이 조금이라도 보이면 계속 굴러가요. 멈춰 있던 시간도 켜 둔 시간에 포함돼서, 돌아왔을 때 간격이 느려져 있을 수 있어요.</em>`;
   const tip=$("#autoTip"); if(tip._k!==k){tip.innerHTML=html;tip._k=k}
 }
 function setAuto(on){

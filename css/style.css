@@ -54,6 +54,7 @@ main.layout{max-width:1180px;margin:0 auto;padding:10px 20px 40px;display:grid;g
 .tip li{display:flex;justify-content:space-between;gap:18px;padding:2px 8px;border-radius:6px}
 .tip li.now{background:var(--accent);color:var(--accent-ink)}
 .tip em{display:block;font-style:normal;font-size:12px;opacity:.75}
+.tip em.focus-note{margin-top:8px;padding-top:8px;border-top:1px solid color-mix(in srgb,var(--bg) 25%,transparent)}
 .auto-toggle small{font-family:var(--body);font-size:13px;color:var(--muted)}
 .auto-toggle input{position:absolute;opacity:0;width:1px;height:1px}
 .auto-toggle .sw{position:relative;width:46px;height:26px;border-radius:13px;background:var(--line);transition:background .2s}
@@ -497,6 +498,148 @@ dialog.cine::backdrop{background:transparent}
 .fe-ring{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,transparent 47%,rgba(0,0,0,.55) 49.5%,#07060c 51%)}
 .fe-glass{position:absolute;left:14%;top:10%;width:34%;height:22%;border-radius:50%;transform:rotate(-28deg);
   background:radial-gradient(ellipse,rgba(255,255,255,.45),transparent 70%)}
+
+/* ===== 화염 ===== */
+.flames{position:absolute;inset:0;mix-blend-mode:screen}
+.flame-glow{position:absolute;left:-10%;right:-10%;bottom:-20%;height:60%;background:radial-gradient(ellipse at 50% 100%,rgba(255,120,20,.9),rgba(255,60,0,.35) 45%,transparent 70%)}
+.flame{position:absolute;bottom:-8%;border-radius:50% 50% 45% 45%/75% 75% 25% 25%;transform-origin:50% 100%;
+  background:radial-gradient(ellipse at 50% 85%,#fff6c0 0,#ffc233 22%,#ff6a00 48%,rgba(220,30,0,.6) 64%,transparent 72%);
+  animation:k-flame .8s ease-in-out infinite alternate}
+@keyframes k-flame{from{transform:scale(1,1) skewX(-4deg);opacity:.85}to{transform:scale(.9,1.18) skewX(5deg);opacity:1}}
+.o-heat{background:linear-gradient(0deg,rgba(255,120,30,.55),rgba(255,200,80,.15) 60%,transparent);mix-blend-mode:overlay}
+/* ===== 빙결 ===== */
+.o-frost{background:linear-gradient(160deg,rgba(215,242,255,.5),rgba(120,190,255,.2));mix-blend-mode:screen}
+.acc-ice{left:-6%;right:-6%;top:1%;bottom:3%;border-radius:4cqw;border:.8cqw solid rgba(235,250,255,.75);
+  background:linear-gradient(135deg,rgba(255,255,255,.26),rgba(170,220,255,.06) 40%,rgba(255,255,255,.16) 58%,rgba(140,200,255,.1));
+  box-shadow:inset 0 0 4cqw rgba(255,255,255,.65),inset 0 -1.5cqw 3cqw rgba(120,190,255,.35),0 0 3cqw rgba(160,220,255,.6);overflow:hidden}
+.acc-ice svg{position:absolute;inset:0;width:100%;height:100%}
+.acc-ice polyline{fill:none;stroke:rgba(255,255,255,.85);stroke-width:.5;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 1px #9fd8ff)}
+.ice-shine{position:absolute;inset:-20%;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.6) 48%,transparent 56%) 0 0/300% 100%;animation:k-shine 4s ease-in-out infinite}
+.frost-edge{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,transparent 58%,rgba(230,248,255,.75) 88%,#fff)}
+.pt-flake{color:#fff;text-shadow:0 0 .8cqw #7fc8ff;animation:k-flake 10s linear infinite}
+@keyframes k-flake{from{transform:translate(0,-8cqh) rotate(0)}to{transform:translate(6cqw,108cqh) rotate(360deg)}}
+/* ===== 신스웨이브 ===== */
+.sw-sunwrap{position:absolute;left:50%;top:21%;width:46%;aspect-ratio:1;translate:-50% 0;filter:drop-shadow(0 0 3cqw rgba(255,90,160,.8))}
+.sw-sun{width:100%;height:100%;border-radius:50%;background:linear-gradient(#fff36b,#ff9f45 45%,#ff3d8b 80%);
+  -webkit-mask:linear-gradient(#000 0 52%,transparent 52%),repeating-linear-gradient(180deg,#000 0 5.5%,transparent 5.5% 8.5%);
+  mask:linear-gradient(#000 0 52%,transparent 52%),repeating-linear-gradient(180deg,#000 0 5.5%,transparent 5.5% 8.5%)}
+.sw-mtnwrap{position:absolute;left:0;right:0;top:42%;height:19.2%;filter:drop-shadow(0 -.3cqw 0 #ff3df0) drop-shadow(0 0 1cqw rgba(255,61,240,.7))}
+.sw-mtn{position:absolute;inset:0;background:linear-gradient(#3a0d63,#12032b);
+  clip-path:polygon(0 100%,0 62%,9% 30%,17% 56%,27% 8%,37% 52%,45% 36%,53% 70%,63% 18%,73% 55%,83% 24%,92% 50%,100% 34%,100% 100%)}
+.sw-mtn.back{opacity:.6;transform:translateX(-7%) scaleY(.8);transform-origin:bottom}
+.sw-floor{position:absolute;left:-60%;right:-60%;top:61%;height:80%;transform-origin:50% 0;transform:perspective(24cqw) rotateX(68deg);background:#12032b;overflow:hidden}
+.sw-grid{position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,61,240,.95) .3cqw,transparent .3cqw) 0 0/7cqw 7cqw,
+  linear-gradient(0deg,rgba(255,61,240,.95) .3cqw,transparent .3cqw) 0 0/7cqw 7cqw;animation:k-grid .8s linear infinite}
+@keyframes k-grid{to{background-position:0 7cqw,0 7cqw}}
+.sw-horizon{position:absolute;left:0;right:0;top:60.6%;height:.8%;background:#ff9bd8;box-shadow:0 0 2cqw 1cqw rgba(255,61,240,.8)}
+/* ===== 라이브 ===== */
+.beam{position:absolute;top:-6%;width:34%;height:120%;margin-left:-17%;transform-origin:50% 0;mix-blend-mode:screen;opacity:.75;
+  background:linear-gradient(180deg,var(--c),transparent 85%);clip-path:polygon(46% 0,54% 0,100% 100%,0 100%);animation:k-sweep 3s ease-in-out infinite alternate}
+@keyframes k-sweep{from{transform:rotate(-28deg)}to{transform:rotate(28deg)}}
+.eq{position:absolute;left:3%;right:3%;bottom:2%;height:24%;display:flex;align-items:flex-end;gap:.8%}
+.eq i{flex:1;height:100%;border-radius:.6cqw .6cqw 0 0;transform-origin:50% 100%;opacity:.8;
+  background:linear-gradient(0deg,#29f0ff,#9d6bff 55%,#ff3df0);animation:k-eq .5s ease-in-out infinite alternate}
+@keyframes k-eq{from{transform:scaleY(.12)}to{transform:scaleY(1)}}
+.crowd{position:absolute;left:0;right:0;bottom:-3%;height:20%}
+.fan{position:absolute;bottom:0;width:10%;height:100%;translate:-50% 0;scale:var(--s)}
+.fan .head{position:absolute;left:10%;right:10%;bottom:-30%;height:80%;border-radius:50% 50% 20% 20%;background:#05030a}
+.fan .stick{position:absolute;left:62%;bottom:40%;width:10%;height:70%;border-radius:1cqw;background:var(--c);transform-origin:50% 100%;
+  box-shadow:0 0 1.2cqw var(--c),0 0 3cqw var(--c);animation:k-stick 1s ease-in-out infinite alternate}
+@keyframes k-stick{from{transform:rotate(-28deg)}to{transform:rotate(22deg)}}
+.pt-note{animation:k-heart 5s ease-in infinite;text-shadow:0 0 1.2cqw currentColor}
+.a-beat{animation:k-beat .5s ease-out infinite}
+@keyframes k-beat{0%{transform:scale(1.05)}40%,100%{transform:scale(1)}}
+/* ===== 만화경 ===== */
+.kal{position:absolute;inset:-25%;animation:k-spin 40s linear infinite,k-hue 12s linear infinite}
+.kal.inner{inset:5%;animation:k-spin 26s linear infinite reverse,k-hue 9s linear infinite reverse;opacity:.9}
+.kw{position:absolute;inset:0;transform-origin:50% 50%}
+.kw img{position:absolute;left:36%;top:2%;width:28%;animation:k-kalimg 7s ease-in-out infinite alternate;-webkit-user-drag:none}
+@keyframes k-kalimg{from{transform:translate(0,0) rotate(0) scale(1)}to{transform:translate(8%,22%) rotate(55deg) scale(1.35)}}
+.kal-vig{position:absolute;inset:0;background:radial-gradient(circle,rgba(5,3,12,.8) 0,rgba(5,3,12,.45) 34%,rgba(5,3,12,.2) 70%)}
+/* ===== 창세 ===== */
+.neb{position:absolute;width:80%;aspect-ratio:1;translate:-50% -50%;opacity:.8;mix-blend-mode:screen;animation:k-neb 14s ease-in-out infinite alternate}
+@keyframes k-neb{from{transform:translate(-4%,-3%) scale(.9)}to{transform:translate(5%,4%) scale(1.15)}}
+.gal{position:absolute;left:50%;top:50%;width:150%;aspect-ratio:1;translate:-50% -50%;mix-blend-mode:screen;animation:k-spin 36s linear infinite;
+  background:conic-gradient(from 0deg,transparent,rgba(255,225,255,.75) 7%,transparent 18%,rgba(190,225,255,.7) 32%,transparent 44%,rgba(255,210,240,.7) 57%,transparent 69%,rgba(210,235,255,.7) 82%,transparent 94%);
+  -webkit-mask:radial-gradient(circle,#000 8%,rgba(0,0,0,.85) 42%,transparent 70%);mask:radial-gradient(circle,#000 8%,rgba(0,0,0,.85) 42%,transparent 70%)}
+.gal-core{position:absolute;left:50%;top:50%;width:40%;aspect-ratio:1;translate:-50% -50%;border-radius:50%;mix-blend-mode:screen;
+  background:radial-gradient(circle,#fff 0,#fff3d0 12%,rgba(255,200,120,.55) 32%,transparent 66%)}
+.orb{position:absolute;left:50%;top:50%;width:0;height:0;animation:k-orbx var(--t) ease-in-out infinite alternate}
+.orby{animation:k-orby var(--t) ease-in-out infinite alternate}
+@keyframes k-orbx{from{transform:translateX(calc(-1 * var(--a)))}to{transform:translateX(var(--a))}}
+@keyframes k-orby{from{transform:translateY(calc(-1 * var(--b))) scale(.75);opacity:.75}to{transform:translateY(var(--b)) scale(1.15);opacity:1}}
+.planet{position:absolute;translate:-50% -50%;border-radius:50%}
+.planet.p1{width:12cqw;height:12cqw;background:radial-gradient(circle at 35% 30%,#fff3c8,#e0a64a 45%,#6a3a10 92%);box-shadow:0 0 3cqw rgba(255,200,120,.5)}
+.planet.p1::after{content:"";position:absolute;inset:-45% -60%;border-radius:50%;border:.9cqw solid rgba(255,232,190,.85);transform:rotate(-18deg) scaleY(.28)}
+.planet.p2{width:7cqw;height:7cqw;background:radial-gradient(circle at 35% 30%,#e6f8ff,#3aa6ff 50%,#0a2a66 95%);box-shadow:0 0 2cqw rgba(80,170,255,.6)}
+.planet.p3{width:4.6cqw;height:4.6cqw;background:radial-gradient(circle at 35% 30%,#ffe6f4,#ff5fb4 55%,#6a0f40 95%);box-shadow:0 0 1.6cqw rgba(255,95,180,.6)}
+
+/* ===== 하루 (36초 하루 주기) ===== */
+.dy-sky,.dy-stars,.dy-clouds,.dy-birds,.dy-haze,.dy-ff{position:absolute;inset:0}
+.dy-sky{animation:var(--dayT,36s) linear var(--daydl,0s) infinite}
+.s-night{background:linear-gradient(180deg,#040816,#0d1838 58%,#1b2552 78%,#101634)}
+.s-dawn{background:linear-gradient(180deg,#2b2f6e 0%,#8e5a9e 32%,#ff9f8a 58%,#ffd6a0 72%,#ffe9c4 80%);animation-name:k-sky-dawn}
+.s-day{background:linear-gradient(180deg,#2f7fd6,#79bdf7 45%,#c9e9ff 72%,#eaf7ff 80%);animation-name:k-sky-day}
+.s-sunset{background:linear-gradient(180deg,#241a55 0%,#7d3b8e 26%,#e2567a 46%,#ff8a5c 60%,#ffc36b 72%,#ffe39a 80%);animation-name:k-sky-sunset}
+@keyframes k-sky-dawn{0%{opacity:1}16%{opacity:1}20%{opacity:0}88%{opacity:0}100%{opacity:1}}
+@keyframes k-sky-day{0%,5%{opacity:0}16%{opacity:1}58%{opacity:1}62%,100%{opacity:0}}
+@keyframes k-sky-sunset{0%,50%{opacity:0}58%{opacity:1}64%{opacity:1}76%,100%{opacity:0}}
+.dy-stars{animation:k-dystars var(--dayT,36s) linear var(--daydl,0s) infinite}
+@keyframes k-dystars{0%{opacity:.3}8%,64%{opacity:0}76%,90%{opacity:1}100%{opacity:.3}}
+.dy-stars i{position:absolute;border-radius:50%;background:#fff;box-shadow:0 0 .6cqw #cfe0ff;animation:k-star 3s ease-in-out infinite}
+.dy-shoot{position:absolute;right:8%;top:10%;width:26cqw;height:.45cqw;border-radius:1cqw;opacity:0;
+  background:linear-gradient(90deg,#fff,rgba(200,220,255,.6) 25%,transparent);box-shadow:0 0 1cqw #cfe0ff;
+  animation:k-dyshoot var(--dayT,36s) linear var(--daydl,0s) infinite}
+.dy-shoot.two{right:30%;top:4%;width:18cqw;animation-name:k-dyshoot2}
+@keyframes k-dyshoot{0%,80%{opacity:0;transform:translate(0,0) rotate(-32deg)}80.4%{opacity:1}82.6%{opacity:0;transform:translate(-44cqw,28cqh) rotate(-32deg)}100%{opacity:0;transform:translate(-44cqw,28cqh) rotate(-32deg)}}
+@keyframes k-dyshoot2{0%,86%{opacity:0;transform:translate(0,0) rotate(-24deg)}86.4%{opacity:1}88.2%{opacity:0;transform:translate(-34cqw,16cqh) rotate(-24deg)}100%{opacity:0;transform:translate(-34cqw,16cqh) rotate(-24deg)}}
+.dy-body{position:absolute;left:0;top:0;width:0;height:0;animation:k-sunpath var(--dayT,36s) linear var(--daydl,0s) infinite}
+.dy-body.moon{animation-name:k-moonpath}
+.dy-sun,.dy-sunglow,.dy-moonface{position:absolute;left:0;top:0;border-radius:50%;translate:-50% -50%}
+.dy-sun{width:14cqw;height:14cqw;background:radial-gradient(circle,#fff 0,#fffbe6 38%,#ffe08a 72%,#ffc85a 100%);
+  box-shadow:0 0 4cqw 1.5cqw rgba(255,236,170,.95);animation:k-suncol var(--dayT,36s) linear var(--daydl,0s) infinite}
+@keyframes k-suncol{0%{filter:saturate(1.8) hue-rotate(-22deg)}18%,48%{filter:none}58%{filter:saturate(2.2) hue-rotate(-34deg) brightness(1.05)}100%{filter:saturate(1.8) hue-rotate(-22deg)}}
+.dy-sunglow{width:80cqw;height:80cqw;background:radial-gradient(circle,rgba(255,236,170,.6),rgba(255,190,110,.2) 32%,transparent 60%);mix-blend-mode:screen}
+.dy-moonface{width:10cqw;height:10cqw;rotate:-20deg;box-shadow:inset -3cqw 1.2cqw 0 0 #fff4d6;
+  filter:drop-shadow(0 0 1.2cqw rgba(255,244,214,.9)) drop-shadow(0 0 4cqw rgba(180,200,255,.6))}
+.dy-drift{position:absolute;left:0;width:100%;animation:k-cloudx 60s linear infinite}
+@keyframes k-cloudx{from{transform:translateX(-45%)}to{transform:translateX(115%)}}
+.dy-cloud{height:0;padding-bottom:9cqw;color:#fff;opacity:.92;animation:k-cloudcol var(--dayT,36s) linear var(--daydl,0s) infinite;
+  background:radial-gradient(circle at 28% 66%,currentColor 0 24%,transparent 25%),radial-gradient(circle at 50% 42%,currentColor 0 30%,transparent 31%),
+  radial-gradient(circle at 73% 62%,currentColor 0 24%,transparent 25%),linear-gradient(currentColor,currentColor) 22% 88%/58% 30% no-repeat}
+@keyframes k-cloudcol{0%{color:#ffd0c4}18%,50%{color:#fff}60%{color:#ffc08c}66%{color:#d0789a}76%,92%{color:#3a4574}100%{color:#ffd0c4}}
+.dy-birds{animation:k-birds var(--dayT,36s) linear var(--daydl,0s) infinite}
+@keyframes k-birds{0%,10%{transform:translateX(-30cqw);opacity:0}12%,36%{opacity:1}40%,100%{transform:translateX(130cqw);opacity:0}}
+.dy-birds span{position:absolute;width:4cqw;height:2cqw}
+.dy-birds span:nth-child(1){left:8%;top:22%}.dy-birds span:nth-child(2){left:1%;top:28%;scale:.8}.dy-birds span:nth-child(3){left:13%;top:31%;scale:.7}
+.dy-birds span::before,.dy-birds span::after{content:"";position:absolute;top:0;width:50%;height:100%;border-top:.45cqw solid #2a3350;border-radius:50% 50% 0 0;
+  animation:k-flap .5s ease-in-out infinite alternate}
+.dy-birds span::before{left:0;transform-origin:100% 50%}.dy-birds span::after{right:0;transform-origin:0 50%;animation-name:k-flap2}
+@keyframes k-flap{from{transform:rotate(-14deg)}to{transform:rotate(18deg)}}
+@keyframes k-flap2{from{transform:rotate(14deg)}to{transform:rotate(-18deg)}}
+.dy-haze{top:auto;bottom:18%;height:26%;animation:k-haze var(--dayT,36s) linear var(--daydl,0s) infinite;
+  background:linear-gradient(0deg,currentColor,transparent);opacity:.55;color:#ffd9b0}
+@keyframes k-haze{0%{color:#ffc9a8}18%,50%{color:#ffffff}60%{color:#ffae6e}68%{color:#c05a8a}78%,92%{color:#2a3460}100%{color:#ffc9a8}}
+.dy-hill{position:absolute;border-radius:50% 50% 0 0/100% 100% 0 0;animation:var(--dayT,36s) linear var(--daydl,0s) infinite}
+.dy-hill.h1{left:-30%;width:95%;bottom:-6%;height:34%;animation-name:k-hill1}
+.dy-hill.h2{right:-35%;width:110%;bottom:-10%;height:32%;animation-name:k-hill2}
+.dy-hill.h3{left:-20%;width:140%;bottom:-16%;height:28%;animation-name:k-hill3}
+@keyframes k-hill1{0%{background:#9a7aa8}18%,50%{background:#86bfae}60%{background:#9a5a8a}68%{background:#5a3570}78%,92%{background:#1c2548}100%{background:#9a7aa8}}
+@keyframes k-hill2{0%{background:#7a5a92}18%,50%{background:#63a88a}60%{background:#7a3f78}68%{background:#44285c}78%,92%{background:#141b3a}100%{background:#7a5a92}}
+@keyframes k-hill3{0%{background:#5a4078}18%,50%{background:#478f6c}60%{background:#5a2b60}68%{background:#301c48}78%,92%{background:#0b1128}100%{background:#5a4078}}
+.dy-ff{animation:k-ffvis var(--dayT,36s) linear var(--daydl,0s) infinite}
+@keyframes k-ffvis{0%,58%{opacity:0}68%,88%{opacity:1}96%,100%{opacity:0}}
+.dy-ff i{position:absolute;width:.9cqw;height:.9cqw;border-radius:50%;background:#fbffb0;box-shadow:0 0 1.2cqw #e8ff6a,0 0 2.6cqw rgba(200,255,90,.6);
+  animation:k-ffmove 6s ease-in-out infinite alternate,k-ffblink 2s ease-in-out infinite alternate}
+@keyframes k-ffmove{0%{transform:translate(0,0)}33%{transform:translate(3cqw,-4cqh)}66%{transform:translate(-2cqw,-7cqh)}100%{transform:translate(4cqw,-2cqh)}}
+@keyframes k-ffblink{from{opacity:.15}to{opacity:1}}
+.o-dl{mix-blend-mode:multiply;animation:k-dl var(--dayT,36s) linear var(--daydl,0s) infinite}
+@keyframes k-dl{0%{background:#ffb8a0;opacity:.35}16%,52%{background:#fff;opacity:0}60%{background:#ff9a5c;opacity:.42}68%{background:#9a5ab0;opacity:.45}78%,92%{background:#34448f;opacity:.6}100%{background:#ffb8a0;opacity:.35}}
+.o-dl2{mix-blend-mode:screen;color:rgba(255,190,150,.5);background:linear-gradient(170deg,currentColor,transparent 55%);animation:k-dl2 var(--dayT,36s) linear var(--daydl,0s) infinite}
+@keyframes k-dl2{0%{color:rgba(255,190,150,.5)}18%,50%{color:rgba(255,255,240,.22)}60%{color:rgba(255,170,90,.6)}78%,92%{color:rgba(150,190,255,.5)}100%{color:rgba(255,190,150,.5)}}
+.a-dayshadow{animation:k-dayshadow var(--dayT,36s) linear var(--daydl,0s) infinite}
+@keyframes k-dayshadow{0%{filter:drop-shadow(3cqw 1.2cqw 1.2cqw rgba(60,30,80,.35))}30%{filter:drop-shadow(0 1.6cqw 1cqw rgba(40,50,90,.3))}
+  60%{filter:drop-shadow(-3.6cqw 1.2cqw 1.2cqw rgba(90,30,50,.42))}78%,92%{filter:drop-shadow(0 0 1.8cqw rgba(170,205,255,.6))}100%{filter:drop-shadow(3cqw 1.2cqw 1.2cqw rgba(60,30,80,.35))}}
 
 /* particles */
 .pt{position:absolute;top:0;left:0;line-height:1;will-change:transform}

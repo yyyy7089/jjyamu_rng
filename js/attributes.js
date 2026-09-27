@@ -17,7 +17,7 @@
      behind      : 배경 바로 위 특수 레이어
      invisible   : true면 이미지와 이미지 모양 레이어를 숨김 (장식·배경·입자·배지는 그대로)
      satellite   : true면 아무 효과도 받지 않은 작은 기본 이미지가 화면 중심을 공전
-     layers      : 직접 그리는 레이어 {back, build} (FX 참고)
+     layers      : 직접 그리는 레이어 {back, scene, build} (FX 참고). scene:true = 화면을 통째로 덮는 배경 장면
      button      : true면 이미지를 클릭하면 '쨔무쨔무' 알림
      explode     : true면 1초 뒤 이미지가 폭발해 사라짐 (도감 썸네일에서는 생략)
      reflect     : 물결 반사   doodle: 선 꿈틀거림   silhouette: 번개 칠 때 검은 실루엣
@@ -107,6 +107,97 @@ const FX = {
   },
   /* ---- 어안: 둥근 렌즈 테두리와 유리 반사 ---- */
   fisheye(layer){layer.innerHTML=`<div class="fe-ring"></div><div class="fe-glass"></div>`},
+
+  /* ---- 화염: 일렁이는 불꽃 혀 ---- */
+  blaze(layer,env){
+    const box=FX.el("div","flames"); box.style.filter=turbFilter(env.el,{freq:[.03,.016],scale:env.u*4.5,dur:1.2,oct:1});
+    box.appendChild(FX.el("div","flame-glow"));
+    for(let i=0;i<7;i++){const w=26+Math.random()*16,hh=50+Math.random()*40,d=.55+Math.random()*.6;
+      box.appendChild(FX.el("div","flame",{left:(i/6*100-13+Math.random()*6)+"%",width:w+"%",height:hh+"%",
+        animationDuration:d+"s",animationDelay:(-Math.random()*d)+"s"}));}
+    layer.appendChild(box);
+  },
+  /* ---- 빙결: 얼음 속 금 (JS로 무작위 생성) ---- */
+  cracks(){
+    let s="";
+    for(let k=0;k<4;k++){ let x=Math.random()*100,y=Math.random()<.5?0:100; if(k%2){y=Math.random()*100;x=Math.random()<.5?0:100}
+      const pts=[[x,y]]; for(let j=0;j<5;j++){x+=(50-x)*.25+(Math.random()-.5)*18;y+=(50-y)*.25+(Math.random()-.5)*18;pts.push([x,y])}
+      s+=`<polyline points="${pts.map(p=>p.map(v=>v.toFixed(1)).join(",")).join(" ")}"/>`; }
+    return `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${s}</svg><i class="ice-shine"></i>`;
+  },
+  frostEdge(layer){layer.appendChild(FX.el("div","frost-edge"))},
+  /* ---- 신스웨이브: 줄무늬 태양, 산, 움직이는 격자 바닥 ---- */
+  synth(layer){
+    layer.innerHTML=`<div class="sw-sunwrap"><div class="sw-sun"></div></div><div class="sw-mtnwrap"><div class="sw-mtn back"></div><div class="sw-mtn"></div></div>
+      <div class="sw-floor"><div class="sw-grid"></div></div><div class="sw-horizon"></div>`;
+  },
+  /* ---- 라이브: 조명, 이퀄라이저, 관객 ---- */
+  liveBack(layer,env){
+    const cols=["#ff3df0","#29f0ff","#ffd84a","#9d6bff"];
+    let html=cols.map((c,i)=>`<div class="beam" style="left:${10+i*27}%;--c:${c};animation-duration:${3+i*.7}s;animation-delay:${-i*1.1}s;filter:blur(${env.u*.8}px)"></div>`).join("");
+    let bars=""; for(let i=0;i<24;i++){const d=.28+Math.random()*.45;bars+=`<i style="animation-duration:${d.toFixed(2)}s;animation-delay:${(-Math.random()*d).toFixed(2)}s"></i>`}
+    layer.innerHTML=html+`<div class="eq">${bars}</div>`;
+  },
+  liveFront(layer){
+    const cols=["#ff3df0","#29f0ff","#ffd84a","#7cff9d","#ff8a3d"]; let h="";
+    for(let i=0;i<13;i++){const x=i/12*104-2,c=cols[i%cols.length],d=.9+Math.random()*.5;
+      h+=`<div class="fan" style="left:${x}%;--c:${c};--s:${(.85+Math.random()*.35).toFixed(2)}"><i class="stick" style="animation-duration:${d.toFixed(2)}s;animation-delay:${(-Math.random()*d).toFixed(2)}s"></i><i class="head"></i></div>`}
+    layer.innerHTML=`<div class="crowd">${h}</div>`;
+  },
+  /* ---- 만화경: 거울 조각으로 비친 쨔무쨔무 ---- */
+  kaleido(layer){
+    const ring=(cls,n,dur)=>{let s="";for(let i=0;i<n;i++){const a=360/n*i;
+      s+=`<div class="kw" style="transform:rotate(${a}deg)${i%2?" scaleX(-1)":""};--half:${(180/n).toFixed(2)}"><img src="${BASE_IMAGE}" alt="" style="animation-duration:${dur}s"></div>`}
+      return `<div class="kal ${cls}">${s}</div>`};
+    layer.innerHTML=ring("",12,7)+ring("inner",8,5)+`<div class="kal-vig"></div>`;
+    layer.querySelectorAll(".kw").forEach(w=>{const half=parseFloat(w.style.getPropertyValue("--half")),t=Math.tan(half*Math.PI/180)*70;
+      w.style.clipPath=`polygon(50% 50%, ${(50-t).toFixed(1)}% -20%, ${(50+t).toFixed(1)}% -20%)`});
+  },
+  /* ---- 창세: 성운, 나선 은하, 행성 ---- */
+  genesisBack(layer,env){
+    let neb=""; [["#ff4fd8",22,28],["#35d6ff",72,70],["#ffc94a",64,18],["#8c5bff",30,78],["#4fffb8",85,40]].forEach(([c,x,y],i)=>{
+      neb+=`<div class="neb" style="left:${x}%;top:${y}%;background:radial-gradient(circle,${c},transparent 65%);filter:blur(${env.u*3}px);animation-duration:${12+i*3}s"></div>`});
+    layer.innerHTML=neb+`<div class="gal"></div><div class="gal-core"></div>`;
+    layer.querySelector(".gal").style.filter=lensFilter(env.el,"swirl",env.u*150,false)+` blur(${env.u*.6}px)`;
+  },
+  planets(layer){
+    layer.innerHTML=[["p1",38,30,11,"-14s"],["p2",46,20,17,"-3s"],["p3",30,36,8,"-6s"]].map(([k,a,b,t,dl])=>
+      `<div class="orb" style="--a:${a}cqw;--b:${b}cqh;--t:${t}s;animation-delay:${dl}"><div class="orby" style="animation-delay:calc(${dl} - ${t/4}s)"><div class="planet ${k}"></div></div></div>`).join("");
+  },
+
+  /* ---- 하루: 새벽 → 한낮 → 노을 → 밤이 36초 동안 흐르는 하늘 ----
+     모든 요소가 같은 길이(--dayT)와 같은 시작점(--daydl)을 써서 한 몸처럼 움직임.
+     시작점은 노을 직전이라, 멈춰 있는 도감 썸네일에서는 노을 풍경으로 보임. */
+  dayKeyframes(){
+    if(document.getElementById("dykf")) return;
+    const pos=phi=>{const r=phi*Math.PI/180;return `transform:translate(${(50+47*Math.sin(r)).toFixed(2)}cqw,${(88-76*Math.cos(r)).toFixed(2)}cqh)`};
+    let sun="",moon="";
+    for(let k=0;k<=48;k++){const t=k/48;
+      const ps=t<=.64?-90+180*(t/.64):90+180*((t-.64)/.36);
+      const pm=t>=.66?-90+180*((t-.66)/.34):90+180*(t/.66);
+      sun+=`${(t*100).toFixed(2)}%{${pos(ps)}}`; moon+=`${(t*100).toFixed(2)}%{${pos(pm)}}`}
+    const st=document.createElement("style"); st.id="dykf";
+    st.textContent=`@keyframes k-sunpath{${sun}}@keyframes k-moonpath{${moon}}`; document.head.appendChild(st);
+  },
+  day(layer,env){
+    FX.dayKeyframes();
+    const T=36; env.el.style.setProperty("--dayT",T+"s"); env.el.style.setProperty("--daydl",(-.54*T)+"s");
+    env.el._cleanup.push(()=>{env.el.style.removeProperty("--dayT");env.el.style.removeProperty("--daydl")});
+    let stars=""; for(let i=0;i<48;i++){const z=.25+Math.random()*.55,d=1.8+Math.random()*2.6;
+      stars+=`<i style="left:${(Math.random()*100).toFixed(1)}%;top:${(Math.random()*58).toFixed(1)}%;width:${z.toFixed(2)}cqw;height:${z.toFixed(2)}cqw;animation-duration:${d.toFixed(1)}s;animation-delay:${(-Math.random()*d).toFixed(1)}s"></i>`}
+    let ff=""; for(let i=0;i<(env.mini?6:16);i++){const d=4+Math.random()*5;
+      ff+=`<i style="left:${(4+Math.random()*92).toFixed(1)}%;top:${(58+Math.random()*36).toFixed(1)}%;animation-duration:${d.toFixed(1)}s,${(1.2+Math.random()*1.6).toFixed(1)}s;animation-delay:${(-Math.random()*d).toFixed(1)}s,${(-Math.random()*2).toFixed(1)}s"></i>`}
+    const cloud=(top,w,dur,dl)=>`<div class="dy-drift" style="top:${top}%;animation-duration:${dur}s;animation-delay:${dl}s"><div class="dy-cloud" style="width:${w}cqw;filter:blur(${(env.u*.5).toFixed(1)}px)"></div></div>`;
+    layer.innerHTML=`
+      <div class="dy-sky s-night"></div><div class="dy-sky s-dawn"></div><div class="dy-sky s-day"></div><div class="dy-sky s-sunset"></div>
+      <div class="dy-stars">${stars}<b class="dy-shoot"></b><b class="dy-shoot two"></b></div>
+      <div class="dy-body sun"><div class="dy-sunglow"></div><div class="dy-sun"></div></div><div class="dy-body moon"><div class="dy-moonface"></div></div>
+      <div class="dy-clouds">${cloud(8,34,70,-10)}${cloud(20,24,52,-38)}${cloud(3,20,90,-60)}</div>
+      <div class="dy-birds"><span></span><span></span><span></span></div>
+      <div class="dy-haze"></div>
+      <div class="dy-hill h1"></div><div class="dy-hill h2"></div><div class="dy-hill h3"></div>
+      <div class="dy-ff">${ff}</div>`;
+  },
   /* ---- 대행진: 줄지어 행진하는 작은 쨔무쨔무들 ---- */
   parade(layer,env){
     const rows=[{top:50,size:11,dur:30,op:.6,n:9},{top:63,size:14,dur:24,op:.8,n:8},{top:78,size:18,dur:18,op:1,n:7}];
@@ -251,16 +342,23 @@ const ATTRS = [
   {id:"storm",   name:"번개",       p:500000,   apply:c=>{c.bg.push({image:"radial-gradient(ellipse at 50% 0,#3b4363,transparent 70%),linear-gradient(180deg,#121524,#252a42 60%,#1a1e31)"});c.layers.push({back:true,build:FX.storm});c.particles.push({type:"rain",n:46});c.silhouette=true}},
   {id:"clone",   name:"분신",       p:600000, apply:c=>{c.clone=true}},
   {id:"tv",      name:"방송사고",   p:640000,   apply:c=>c.frames.push({cls:"f-tv",build:FX.tv})},
+  {id:"frozen",  name:"빙결",       p:725000,   apply:c=>{c.bg.push({image:"radial-gradient(circle at 50% 30%,#f4fbff,transparent 60%),linear-gradient(180deg,#d9f1ff,#9fd0f2)"});c.img.push("saturate(.75)");c.overlays.push("o-frost");c.acc.push({cls:"acc-ice",html:FX.cracks()});c.layers.push({back:false,build:FX.frostEdge});c.particles.push({type:"flake",n:14});c.shadows.push(u=>`drop-shadow(0 0 ${1.5*u}px rgba(200,240,255,.95))`)}},
   {id:"galaxy",  name:"은하",       p:800000, apply:c=>{c.bg.push({image:"radial-gradient(ellipse at 28% 35%,rgba(190,90,255,.75),transparent 55%),radial-gradient(ellipse at 75% 72%,rgba(40,220,230,.6),transparent 50%),linear-gradient(#0b0826,#1a0f45)"});c.particles.push({type:"star",n:40,back:true});c.shadows.push(u=>`drop-shadow(0 0 ${2.5*u}px rgba(200,120,255,.9))`)}},
   {id:"divine",  name:"신성",       p:1000000,apply:c=>{c.behind.push("rays");c.particles.push({type:"gold",n:12});c.shadows.push(u=>`drop-shadow(0 0 ${2*u}px #ffe07a) drop-shadow(0 0 ${5*u}px #ffc93a)`)}},
   {id:"boom",    name:"폭발",       p:1337000,apply:c=>{c.explode=true}},
+  {id:"blaze",   name:"화염",       p:1500000,   apply:c=>{c.bg.push({image:"linear-gradient(180deg,#160605,#360e07 55%,#5c1a07)"});c.layers.push({back:true,build:FX.blaze});c.particles.push({type:"ember",n:22});c.overlays.push("o-heat");c.shadows.push(u=>`drop-shadow(0 0 ${1.2*u}px #ffd27a) drop-shadow(0 0 ${3.5*u}px rgba(255,90,20,.85))`)}},
   {id:"aurora",  name:"오로라",     p:2000000,  apply:c=>{c.bg.push({image:"linear-gradient(180deg,#04121f,#0b2440 55%,#123f55)"});c.particles.push({type:"star",n:26,back:true});c.layers.push({back:true,build:FX.aurora});c.overlays.push("o-aurora");c.shadows.push(u=>`drop-shadow(0 0 ${1.2*u}px rgba(120,255,210,.9)) drop-shadow(0 0 ${3.5*u}px rgba(60,220,255,.55))`)}},
   {id:"card",    name:"카드",       p:3000000,  apply:c=>c.frames.push({cls:"f-card",build:FX.card})},
   {id:"sakura",  name:"벚꽃",       p:5000000,  apply:c=>{c.bg.push({image:"radial-gradient(circle at 50% 20%,#fff8fb,transparent 60%),linear-gradient(180deg,#fff0f5,#ffe0eb 55%,#fff6f9)"});c.layers.push({back:true,build:FX.bokeh});c.particles.push({type:"petal",n:10,back:true});c.particles.push({type:"petal",n:18});c.shadows.push(u=>`drop-shadow(0 0 ${1.4*u}px #fff) drop-shadow(0 0 ${3.5*u}px rgba(255,140,185,.75))`)}},
   {id:"blackhole",name:"블랙홀",    p:7000000,  apply:c=>{c.bg.push({image:"radial-gradient(circle at 50% 50%,#1c1030,#05030c 70%)"});c.particles.push({type:"star",n:40,back:true});c.layers.push({back:true,build:FX.blackhole});c.anims.push("a-bh")}},
   {id:"meteor",  name:"유성우",     p:12000000, apply:c=>{c.bg.push({image:"linear-gradient(180deg,#050822,#171352 58%,#3b2170)"});c.particles.push({type:"star",n:44,back:true});c.layers.push({back:true,build:FX.meteors});c.overlays.push("o-starlit");c.shadows.push(u=>`drop-shadow(0 0 ${1.2*u}px #dfe9ff) drop-shadow(0 0 ${3.5*u}px rgba(120,160,255,.8))`)}},
+  {id:"synth",   name:"신스웨이브", p:12000000,  apply:c=>{c.bg.push({image:"linear-gradient(180deg,#12032b 0%,#3b0b5c 36%,#a3257a 55%,#ff6a8a 61%,#12032b 61.1%)"});c.layers.push({back:true,scene:true,build:FX.synth});c.shadows.push(u=>`drop-shadow(${-.7*u}px 0 0 #29f0ff) drop-shadow(${.7*u}px 0 0 #ff3df0) drop-shadow(0 0 ${3*u}px rgba(255,61,240,.6))`)}},
+  {id:"live",    name:"라이브",     p:16000000,  apply:c=>{c.bg.push({image:"linear-gradient(180deg,#07040f,#1a0f2e)"});c.layers.push({back:true,build:FX.liveBack});c.layers.push({back:false,build:FX.liveFront});c.particles.push({type:"note",n:12});c.anims.push("a-beat");c.shadows.push(u=>`drop-shadow(0 0 ${2*u}px rgba(255,255,255,.7))`)}},
   {id:"portal",  name:"차원문",     p:25000000, apply:c=>c.layers.push({back:true,build:FX.portal})},
   {id:"crystal", name:"크리스탈",   p:35000000, apply:c=>{c.bg.push({image:"linear-gradient(160deg,#eef8ff,#f1e9ff 50%,#ffeaf6)"});c.layers.push({back:true,build:FX.prismRays});c.layers.push({back:true,build:FX.shards(false)});c.layers.push({back:false,build:FX.shards(true)});c.overlays.push("o-prism");c.shadows.push(u=>`drop-shadow(0 0 ${1*u}px #fff) drop-shadow(0 0 ${3*u}px #9fd8ff)`)}},
   {id:"parade",  name:"대행진",     p:60000000, apply:c=>{c.layers.push({back:true,build:FX.parade});c.acc.push({cls:"acc-flag",html:`<div class="pole"></div><div class="cloth"><img src="${BASE_IMAGE}" alt=""></div>`});c.anims.push("a-march")}},
+  {id:"genesis", name:"창세",       p:86000000,apply:c=>{c.bg.push({image:"linear-gradient(#04020c,#0c0626)"});c.particles.push({type:"star",n:60,back:true});c.layers.push({back:true,build:FX.genesisBack});c.layers.push({back:false,build:FX.planets});c.particles.push({type:"gold",n:10});c.shadows.push(u=>`drop-shadow(0 0 ${1.2*u}px #fff) drop-shadow(0 0 ${3.5*u}px #ffe7a0) drop-shadow(0 0 ${8*u}px rgba(190,120,255,.7))`)}},
   {id:"descent", name:"강림",       p:100000000,apply:c=>{c.bg.push({image:"radial-gradient(circle at 50% 46%,rgba(255,236,180,.35),transparent 58%),linear-gradient(180deg,#140d2e,#2e1d57 60%,#4a2c6e)"});c.layers.push({back:true,build:FX.magicCircle});c.layers.push({back:true,build:FX.pillar});c.particles.push({type:"mote",n:22});c.overlays.push("o-sheen");c.shadows.push(u=>`drop-shadow(0 0 ${1.2*u}px #fffbe8) drop-shadow(0 0 ${3*u}px #ffd76a) drop-shadow(0 0 ${7*u}px rgba(255,200,90,.55))`)}},
+  {id:"kaleido", name:"만화경",     p:150000000, apply:c=>{c.bg.push({image:"radial-gradient(circle,#1b1033,#05030c 75%)"});c.layers.push({back:true,scene:true,build:FX.kaleido});c.shadows.push(u=>`drop-shadow(0 0 ${1.2*u}px #fff) drop-shadow(0 0 ${4*u}px rgba(180,140,255,.9))`)}},
+  {id:"day",     name:"하루",       p:500000000, apply:c=>{c.layers.push({back:true,scene:true,build:FX.day});c.overlays.push("o-dl");c.overlays.push("o-dl2");c.fxAnims.push("a-dayshadow")}},
 ];

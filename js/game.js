@@ -464,13 +464,31 @@ function cinematic({level=null,d=1,exact="",traits=[],onFlash=()=>{},stage=null}
 }
 
 /* 자동 굴리기: 켜 두면 AUTO_INTERVAL마다 저절로 굴리고, 직접 굴리기는 막힘 */
-const AUTO_INTERVAL=3000;
-const AUTO={on:false,next:0};
+// [자동 굴리기를 켜 둔 시간(ms), 그때부터의 간격(ms)]
+const AUTO_STEPS=[[0,2000],[5*60e3,3000],[15*60e3,4000],[60*60e3,5000],[180*60e3,10000]];
+const AUTO={on:false,next:0,since:0};
+function autoStep(){const e=Date.now()-AUTO.since;let k=0;AUTO_STEPS.forEach(([t],i)=>{if(e>=t)k=i});return k}
+const autoInterval=()=>AUTO_STEPS[autoStep()][1];
+const MANUAL_HINT="스페이스바로도 굴릴 수 있어요. 1초마다 한 번씩 굴릴 수 있어요.";
+function autoHint(){
+  const k=autoStep(), mins=Math.floor((Date.now()-AUTO.since)/60e3), nx=AUTO_STEPS[k+1];
+  return `자동 굴리기 중이에요${mins?` (${mins}분째)`:""}. 지금은 ${AUTO_STEPS[k][1]/1000}초마다 굴려지고, 직접 굴리기는 막혀요.`+
+    (nx?` ${nx[0]/60e3}분이 지나면 ${nx[1]/1000}초마다로 느려져요.`:"");
+}
+function renderAutoTip(){
+  const k=AUTO.on?autoStep():-1, fmt=m=>m>=60?`${m/60}시간`:`${m}분`;
+  const rows=AUTO_STEPS.map(([t,iv],i)=>{const nx=AUTO_STEPS[i+1];
+    const range=nx?`${t?fmt(t/60e3):"처음"} ~ ${fmt(nx[0]/60e3)}`:`${fmt(t/60e3)} 이후`;
+    return `<li${i===k?' class="now"':""}><span>${range}</span><b>${iv/1000}초</b></li>`}).join("");
+  const html=`<strong>자동 굴리기 간격</strong><ul>${rows}</ul><em>켜 둔 시간이 길어질수록 느려져요. 껐다 켜면 처음부터 다시 시작해요.</em>`;
+  const tip=$("#autoTip"); if(tip._k!==k){tip.innerHTML=html;tip._k=k}
+}
 function setAuto(on){
-  AUTO.on=on; AUTO.next=Date.now()+AUTO_INTERVAL;
+  AUTO.on=on; AUTO.since=Date.now(); AUTO.next=AUTO.since+autoInterval();
   $("#autoRoll").checked=on; btn.classList.toggle("auto",on);
-  $("#rollHint").textContent=on?"자동 굴리기 중이에요. 3초마다 저절로 굴려지고, 직접 굴리기는 막혀요."
-                               :"스페이스바로도 굴릴 수 있어요. 1초마다 한 번씩 굴릴 수 있어요.";
+  $("#autoEvery").textContent=`${AUTO_STEPS[0][1]/1000}초마다`;
+  $("#rollHint").textContent=on?autoHint():MANUAL_HINT;
+  renderAutoTip();
 }
 function roll(src){
   if(AUTO.on&&src!=="auto") return;
@@ -642,6 +660,10 @@ $("#colMore").onclick=()=>{colLimit+=60;renderCollection()};
 const btn=$("#rollBtn");
 btn.onclick=()=>roll("manual");
 $("#autoRoll").addEventListener("change",e=>setAuto(e.target.checked));
+renderAutoTip();
+// "2초마다"를 누르면 스위치는 그대로 두고 설명만 열고 닫음 (터치 기기용)
+$("#autoEvery").addEventListener("click",e=>{e.preventDefault();e.stopPropagation();$(".tip-wrap").classList.toggle("open")});
+document.addEventListener("click",e=>{if(!e.target.closest(".tip-wrap"))$(".tip-wrap").classList.remove("open")});
 document.addEventListener("keydown",e=>{
   if(CINE.active){if(e.code==="Space"||e.key==="Enter"||e.key==="Escape"){e.preventDefault();CINE.finish&&CINE.finish()}return}
   if(e.code==="Space"&&!e.repeat&&!$("#viewer").open&&!$("#alertBox").open&&!/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)&&!document.activeElement.closest("[role=button]")){e.preventDefault();roll("manual")}
@@ -650,10 +672,14 @@ function tick(){
   let r=remaining(), p=1-r/COOLDOWN, label;
   if(AUTO.on){
     const now=Date.now();
-    if(CINE.active) AUTO.next=now+AUTO_INTERVAL;          // 연출 중에는 대기, 끝난 뒤 3초 후 다음 굴리기
-    else if(now>=AUTO.next){ roll("auto"); AUTO.next=now+AUTO_INTERVAL; }
+    const iv=autoInterval();
+    if(CINE.active) AUTO.next=now+iv;          // 연출 중에는 대기, 끝난 뒤 한 간격 뒤에 다음 굴리기
+    else if(now>=AUTO.next){ roll("auto"); AUTO.next=now+iv; }
     const left=Math.max(0,AUTO.next-Date.now());
-    p=1-left/AUTO_INTERVAL; label=`자동 굴리기 · ${Math.ceil(left/1000)}초 후`;
+    p=Math.max(0,1-left/iv); label=`자동 굴리기 · ${Math.ceil(left/1000)}초 후`;
+    const ev=`${iv/1000}초마다`; if($("#autoEvery").textContent!==ev) $("#autoEvery").textContent=ev;
+    const hint=autoHint(); if($("#rollHint").textContent!==hint) $("#rollHint").textContent=hint;
+    renderAutoTip();
     btn.classList.remove("ready"); btn.setAttribute("aria-disabled","true");
   } else {
     btn.classList.toggle("ready",r===0);

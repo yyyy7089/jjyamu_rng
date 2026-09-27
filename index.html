@@ -23,7 +23,8 @@
   <section class="play" aria-label="굴리기">
     <div class="stage" id="mainStage" aria-live="polite"></div>
     <button class="roll" id="rollBtn" type="button"><i class="fill"></i><span id="rollLabel">굴리기</span></button>
-    <p class="hint">스페이스바로도 굴릴 수 있어요. 1초마다 한 번씩 굴릴 수 있어요.</p>
+    <label class="auto-toggle"><input type="checkbox" id="autoRoll" role="switch"><span class="sw" aria-hidden="true"></span>자동 굴리기 <small>3초마다</small></label>
+    <p class="hint" id="rollHint">스페이스바로도 굴릴 수 있어요. 1초마다 한 번씩 굴릴 수 있어요.</p>
     <div class="result" id="result"></div>
     <div class="dev" id="dev" hidden>
       <h2>개발용 미리보기 (저장되지 않음)</h2>
@@ -70,7 +71,7 @@
         <div><dt>사용한 오픈소스</dt>
           <dd>Do Hyeon 폰트</dd><p class="lic">우아한형제들, SIL Open Font License 1.1</p>
           <dd>IBM Plex Sans KR 폰트</dd><p class="lic">IBM, SIL Open Font License 1.1</p>
-          <dd>Twemoji (💀, ☠️ 이미지)</dd><p class="lic">Twitter, Inc 및 기여자, CC-BY 4.0</p>
+          <dd>Twemoji (💀, ☠️, 🛐 이미지)</dd><p class="lic">Twitter, Inc 및 기여자, CC-BY 4.0</p>
           <p class="lic" style="margin-top:8px">폰트는 Google Fonts를 통해 불러옵니다. 모든 효과는 외부 라이브러리 없이 순수 HTML, CSS, JavaScript로 구현했습니다.</p>
         </div>
       </dl>

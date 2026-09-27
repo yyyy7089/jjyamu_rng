@@ -62,8 +62,40 @@ let PIXEL_IMAGE = BASE_IMAGE;
 })();
 
 /* ---------------- rendering engine ---------------- */
+let FILTER_SEQ=0;
+/* ---------------- 렌즈 왜곡 (SVG feDisplacementMap + JS로 만든 변위 지도) ---------------- */
+// 지도의 R/G 값 = 가로/세로로 얼마나 떨어진 곳의 픽셀을 가져올지 (128 = 그대로)
+const LENS_DEF={
+  bulge:  {M:.12, f:(x,y)=>{const R=.46,r=Math.hypot(x,y);if(r>=R||r===0)return[0,0];const t=r/R,k=Math.pow(t,1.7)/t-1;return[x*k,y*k]}},
+  fisheye:{M:.16, f:(x,y)=>{const R=.5,r=Math.hypot(x,y);if(r>=R||r===0)return[0,0];const t=r/R,k=Math.pow(t,2.1)/t-1;return[x*k,y*k]}},
+  swirl:  {M:.34, f:(x,y)=>{const R=.49,r=Math.hypot(x,y);if(r>=R)return[0,0];const a=4.4*Math.pow(1-r/R,2),co=Math.cos(a),si=Math.sin(a);
+            return[(x*co-y*si)-x,(x*si+y*co)-y]}},
+};
+const LENS_MAP={};
+function lensMap(type){
+  if(LENS_MAP[type]) return LENS_MAP[type];
+  const N=160, cv=document.createElement("canvas"); cv.width=cv.height=N;
+  const g=cv.getContext("2d"), img=g.createImageData(N,N), D=LENS_DEF[type];
+  for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+    const [dx,dy]=D.f((i+.5)/N-.5,(j+.5)/N-.5), o=(j*N+i)*4;
+    img.data[o]=Math.max(0,Math.min(255,Math.round(127.5+dx/(2*D.M)*255)));
+    img.data[o+1]=Math.max(0,Math.min(255,Math.round(127.5+dy/(2*D.M)*255)));
+    img.data[o+2]=0; img.data[o+3]=255;
+  }
+  g.putImageData(img,0,0);
+  return LENS_MAP[type]=cv.toDataURL("image/png");
+}
+// el 안에 필터를 만들고 url(#id)를 돌려줌. size = 필터를 걸 요소의 한 변(px)
+function lensFilter(el,type,size,anim){
+  const id="fxf"+(++FILTER_SEQ), S=(2*LENS_DEF[type].M*size).toFixed(1);
+  const a=anim?`<animate attributeName="scale" dur="4.5s" values="${(S*.5).toFixed(1)};${S};${(S*.5).toFixed(1)}" keyTimes="0;.5;1" calcMode="spline" keySplines=".45 0 .55 1;.45 0 .55 1" repeatCount="indefinite"/>`:"";
+  el.insertAdjacentHTML("beforeend",`<svg class="fdefs" aria-hidden="true"><filter id="${id}" x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
+    <feImage href="${lensMap(type)}" result="m" preserveAspectRatio="none"/>
+    <feDisplacementMap in="SourceGraphic" in2="m" scale="${S}" xChannelSelector="R" yChannelSelector="G">${a}</feDisplacementMap></filter></svg>`);
+  return `url(#${id})`;
+}
 function newCtx(){return {colors:[],img:[],tintK:1,transforms:[],anims:[],fxAnims:[],shadows:[],overlays:[],
-  bg:[],frames:[],particles:[],acc:[],behind:[],badges:[],layers:[],invisible:false,button:false,explode:false,satellite:false,opacity:1,pixel:false,clone:false}}
+  bg:[],frames:[],particles:[],acc:[],behind:[],badges:[],layers:[],lens:[],fisheye:false,invisible:false,reflect:false,doodle:false,silhouette:false,button:false,explode:false,satellite:false,opacity:1,pixel:false,clone:false}}
 
 function spawn(layer,type,n,mini){
   const count=mini?Math.ceil(n/3):n;
@@ -81,6 +113,7 @@ function spawn(layer,type,n,mini){
     else if(type==="ember"){const z=.7+r()*1;s.style.width=s.style.height=z+"cqw";s.style.left=10+r()*85+"%";dur=3+r()*3}
     else if(type==="petal"){const z=2.6+r()*2.4;s.style.width=z+"cqw";s.style.height=(z*.72)+"cqw";s.style.left=r()*110+"%";
       s.style.opacity=(.75+r()*.25).toFixed(2);dur=6+r()*5}
+    else if(type==="rain"){s.style.left=(r()*110-5)+"%";s.style.height=(5+r()*5)+"cqw";dur=.45+r()*.35}
     else if(type==="mote"){const z=.6+r()*1;s.style.width=s.style.height=z+"cqw";s.style.left=(25+r()*50)+"%";dur=4+r()*4}
     else if(type==="star"){const z=.3+r()*.6;s.style.width=s.style.height=z+"cqw";s.style.left=r()*100+"%";s.style.top=r()*100+"%";dur=2+r()*3}
     s.style.animationDuration=dur+"s"; s.style.animationDelay=(-r()*dur)+"s";
@@ -91,9 +124,12 @@ function spawn(layer,type,n,mini){
 const BADGE={size:16,gap:2.5,edge:3.5}; // 크기·간격·여백 (무대 너비 대비 %)
 function renderStage(el,ids,opt={}){
   const mini=!!opt.mini;
+  const live=!mini&&!opt.bare;
   if(el._timers) el._timers.forEach(clearTimeout);
   el._timers=[];
-  el.innerHTML=""; el.classList.toggle("mini",mini);
+  if(el._cleanup) el._cleanup.forEach(f=>{try{f()}catch(e){}});
+  el._cleanup=[]; el.style.transform=""; el.style.filter=""; el.classList.remove("bolt","tv-glitch");
+  el.innerHTML=""; el.classList.toggle("mini",mini); el.classList.toggle("bare",!!opt.bare);
   const u=(opt.size||el.getBoundingClientRect().width||300)/100;
   const c=newCtx(); for(const id of sortIds(ids)) AMAP[id].apply(c);
 
@@ -101,26 +137,33 @@ function renderStage(el,ids,opt={}){
   const bgs=[...c.bg].reverse(); // later-pushed attrs sit on top
   const imgs=bgs.map(b=>b.image), sizes=bgs.map(b=>b.size||"auto");
   imgs.push("radial-gradient(circle at 50% 38%,#FBFAFF,#E2DBFB 72%)"); sizes.push("auto");
-  el.style.backgroundImage=imgs.join(","); el.style.backgroundSize=sizes.join(",");
+  el.style.backgroundImage=opt.bare?"none":imgs.join(","); el.style.backgroundSize=sizes.join(",");
+  const env={u,mini,live,el,ids,serial:opt.serial};
 
   for(const b of c.behind){const d=document.createElement("div");d.className=b;el.appendChild(d)}
   const back=c.particles.filter(p=>p.back), front=c.particles.filter(p=>!p.back);
   if(back.length){const l=document.createElement("div");l.className="layer";back.forEach(p=>spawn(l,p.type,p.n,mini));el.appendChild(l)}
-  const addLayers=isBack=>{for(const L of c.layers) if(!!L.back===isBack){const l=document.createElement("div");l.className="layer";L.build(l,{u,mini});el.appendChild(l)}};
+  const addLayers=isBack=>{for(const L of c.layers) if(!!L.back===isBack){const l=document.createElement("div");l.className="layer";L.build(l,env);el.appendChild(l)}};
   addLayers(true);
 
   // frames (nested so all stay visible)
   const frames=document.createElement("div"); frames.className="frames"; el.appendChild(frames);
   let host=frames;
-  for(const f of c.frames){const d=document.createElement("div");d.className="frame "+f;host.appendChild(d);host=d}
+  const frameBuilds=[];
+  for(const f of c.frames){const d=document.createElement("div");d.className="frame "+(typeof f==="string"?f:f.cls);host.appendChild(d);host=d;
+    if(f.build) frameBuilds.push([d,f.build])}
   const content=document.createElement("div"); content.className="content"; host.appendChild(content);
 
   // animation wrappers (each animation on its own layer so they compose)
   let w=content;
   const wrap=cls=>{const d=document.createElement("div");d.className="w"+(cls?" "+cls:"");w.appendChild(d);w=d;return d};
+  if(c.reflect) wrap("w-lift");
   for(const a of c.anims) wrap(a);
   const tw=wrap(); if(c.transforms.length) tw.style.transform=c.transforms.join(" ");
-  const sw=wrap(); if(c.shadows.length) sw.style.filter=c.shadows.map(f=>f(u)).join(" ");
+  const sw=wrap();
+  { const fl=c.lens.map(t=>lensFilter(el,t,u*100,t==="swirl")).concat(c.shadows.map(f=>f(u)));
+    if(fl.length) sw.style.filter=fl.join(" "); }
+  if(c.fisheye) el.style.filter=lensFilter(el,"fisheye",u*100,false);
   for(const a of c.fxAnims) wrap(a);
 
   // the image + masked layers
@@ -136,13 +179,36 @@ function renderStage(el,ids,opt={}){
     d.style.webkitMaskImage=mask;d.style.maskImage=mask;Object.assign(d.style,style||{});fx.appendChild(d)};
   if(!c.invisible&&c.colors.length) addOv("",{background:mixColors(c.colors),mixBlendMode:"multiply",opacity:Math.min(.8,.72*c.tintK+.08)});
   if(!c.invisible) for(const o of c.overlays) addOv(o);
-  for(const a of c.acc){const d=document.createElement("div");d.className="acc "+a.cls;if(a.text)d.textContent=a.text;fx.appendChild(d)}
+  if(!c.invisible&&c.silhouette) addOv("o-sil");
+  for(const a of c.acc){const d=document.createElement("div");d.className="acc "+a.cls;if(a.text)d.textContent=a.text;if(a.html)d.innerHTML=a.html;fx.appendChild(d)}
+  if(c.doodle){ const id="fxf"+(++FILTER_SEQ);
+    el.insertAdjacentHTML("beforeend",`<svg class="fdefs" aria-hidden="true"><filter id="${id}" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="turbulence" baseFrequency="0.035" numOctaves="2" seed="1" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="${(1.4*u).toFixed(1)}" xChannelSelector="R" yChannelSelector="G"/></filter></svg>`);
+    fx.style.filter=`url(#${id})`;
+    if(live){ const tb=el.querySelector(`#${id} feTurbulence`); let s=1;
+      const boil=()=>{ if(!tb.isConnected) return; s=s%4+1; tb.setAttribute("seed",String(s*7)); el._timers.push(setTimeout(boil,130)); }; boil(); } }
 
   if(c.clone){
     for(const side of [-1,1]){const k=fx.cloneNode(true);k.classList.add("clone");
       k.style.transform=`translateX(${side*42}%) scale(.72)`;k.style.opacity=(c.opacity*.45).toFixed(2);w.appendChild(k)}
   }
   w.appendChild(fx);
+
+  // 물결: 수면과 거꾸로 비친 모습
+  if(c.reflect){
+    const lift=content.firstElementChild, id="fxf"+(++FILTER_SEQ);
+    el.insertAdjacentHTML("beforeend",`<svg class="fdefs" aria-hidden="true"><filter id="${id}" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.01 0.09" numOctaves="1" seed="3" result="n">
+        <animate attributeName="baseFrequency" dur="5s" values="0.01 0.09;0.014 0.12;0.01 0.09" repeatCount="indefinite"/></feTurbulence>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="${(3*u).toFixed(1)}" xChannelSelector="R" yChannelSelector="G"/></filter></svg>`);
+    const water=document.createElement("div"); water.className="water";
+    const refl=document.createElement("div"); refl.className="reflect"; refl.style.filter=`url(#${id})`;
+    const k=lift.cloneNode(true); k.querySelectorAll("[tabindex],[role]").forEach(n=>{n.removeAttribute("tabindex");n.removeAttribute("role")});
+    refl.appendChild(k);
+    const hl=document.createElement("div"); hl.className="water-hl";
+    content.insertBefore(water,lift); content.insertBefore(refl,lift); content.insertBefore(hl,lift);
+  }
 
   if(front.length){const l=document.createElement("div");l.className="layer";front.forEach(p=>spawn(l,p.type,p.n,mini));el.appendChild(l)}
   addLayers(false);
@@ -164,7 +230,8 @@ function renderStage(el,ids,opt={}){
     });
     el.appendChild(l);
   }
-  if(!mini){
+  for(const [d,fn] of frameBuilds) fn(d,env);
+  if(live){
     if(c.button) makeButton(fx);
     if(c.explode) el._timers.push(setTimeout(()=>explode(el,w,fx,u),1000));
   }
@@ -207,6 +274,7 @@ function explode(el,w,fx,u){
       frags.push(k);
     }
     for(const ch of [...w.children]) ch.style.visibility="hidden";
+    el.querySelectorAll(".reflect").forEach(r=>r.remove());
     frags.forEach(k=>w.appendChild(k));
     // 2) 불꽃, 충격파, 불티, 연기
     const boom=document.createElement("div"); boom.className="layer boom";
@@ -224,9 +292,9 @@ function explode(el,w,fx,u){
   },140));
 }
 
-function miniStage(ids,size){
+function miniStage(ids,size,serial){
   const d=document.createElement("div"); d.className="stage"; d.style.width=size+"px";
-  renderStage(d,ids,{mini:true,size}); return d;
+  renderStage(d,ids,{mini:true,size,serial}); return d;
 }
 
 /* ---------------- state & storage ---------------- */
@@ -236,7 +304,7 @@ let lastRollInfo=null; // {ids, newAttrs:Set, newCombo, t}
 
 function serialize(){
   return {v:1,total:state.total,lastRollAt:state.lastRollAt,history:state.history,attrs:state.attrs,
-    combos:Object.entries(state.combos).map(([k,v])=>({k,c:v.c,f:v.f,l:v.l}))};
+    combos:Object.entries(state.combos).map(([k,v])=>({k,c:v.c,f:v.f,l:v.l,...(v.n!=null?{n:v.n}:{})}))};
 }
 function deserialize(o){
   if(!o||typeof o!=="object") return null;
@@ -244,8 +312,8 @@ function deserialize(o){
   for(const e of (o.combos||[])){
     if(!e||typeof e.k!=="string") continue;
     const k=keyOf(idsOf(e.k)); const cur=combos[k];
-    if(cur){cur.c+=e.c|0;cur.f=Math.min(cur.f,e.f||cur.f);cur.l=Math.max(cur.l,e.l||0)}
-    else combos[k]={c:e.c|0,f:e.f||0,l:e.l||0};
+    if(cur){cur.c+=e.c|0;cur.f=Math.min(cur.f,e.f||cur.f);cur.l=Math.max(cur.l,e.l||0);if(e.n!=null&&(cur.n==null||e.n<cur.n))cur.n=e.n}
+    else combos[k]={c:e.c|0,f:e.f||0,l:e.l||0,...(e.n!=null?{n:e.n}:{})};
   }
   return {total:o.total|0,lastRollAt:+o.lastRollAt||0,history:Array.isArray(o.history)?o.history.slice(0,HISTORY_MAX):[],
     combos,attrs:(o.attrs&&typeof o.attrs==="object")?{...o.attrs}:{}};
@@ -309,7 +377,14 @@ function traitStyle(p){
 const CINE={active:false,finish:null};
 const rmotion=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-function cinematic({level=null,d=1,exact="",traits=[],onFlash=()=>{}}){
+// 이 조합이 연출 대상인지: {level, traits, d, exact} 또는 null
+function cineInfo(ids){
+  const d=denOf(ids), t=tier(d), tierCine=!!(t&&t.i>=CINE_FROM);
+  const rare=ids.filter(id=>AMAP[id]&&AMAP[id].p>=TRAIT_CINE_MIN).sort((a,b)=>AMAP[b].p-AMAP[a].p);
+  if(!tierCine&&!rare.length) return null;
+  return {level:tierCine?t.i:null,d,exact:denBig(ids).toLocaleString("ko-KR"),traits:rare};
+}
+function cinematic({level=null,d=1,exact="",traits=[],onFlash=()=>{},stage=null}){
   const TS=level!=null?CINE_STYLE[level]:null;
   const top=traits.length?AMAP[traits[0]]:null;
   const TR=top?traitStyle(top.p):null;
@@ -317,7 +392,7 @@ function cinematic({level=null,d=1,exact="",traits=[],onFlash=()=>{}}){
   const target=TS?d:top.p;
   const exactStr=TS?(exact||Math.round(d).toLocaleString("ko-KR")):top.p.toLocaleString("ko-KR");
   const names=traits.map(id=>esc(AMAP[id].name));
-  const ov=document.createElement("div"); ov.id="cine";
+  const ov=document.createElement("dialog"); ov.id="cine";
   ov.className="cine "+(TS?"lv"+level:"trait")+(TS&&TS.rainbow?" rainbow":"");
   ov.style.setProperty("--c1",S.c1); ov.style.setProperty("--c2",S.c2); ov.style.setProperty("--hold",hold+"ms");
   if(TR){ov.style.setProperty("--t1",TR.c1);ov.style.setProperty("--t2",TR.c2)}
@@ -332,7 +407,8 @@ function cinematic({level=null,d=1,exact="",traits=[],onFlash=()=>{}}){
       <div class="cine-ring"></div><div class="cine-ring r2"></div><div class="cine-ring r3"></div></div>
     <div class="cine-text">${text}</div></div>
     <div class="cine-flash"></div><p class="cine-skip">눌러서 건너뛰기</p>`;
-  document.body.appendChild(ov);
+  document.body.appendChild(ov); ov.showModal();
+  ov.addEventListener("cancel",e=>{e.preventDefault();CINE.finish&&CINE.finish()});
   if(TS&&TS.stars){const st=ov.querySelector(".cine-stars");for(let i=0;i<110;i++){const s=document.createElement("i");
     s.style.left=Math.random()*100+"%";s.style.top=Math.random()*100+"%";s.style.animationDelay=(-Math.random()*3)+"s";
     const z=1+Math.random()*2.5;s.style.width=s.style.height=z+"px";st.appendChild(s)}}
@@ -369,7 +445,7 @@ function cinematic({level=null,d=1,exact="",traits=[],onFlash=()=>{}}){
        {transform:`translate(${-4*S.shake}px,${-3*S.shake}px)`},{transform:`translate(${2*S.shake}px,${2*S.shake}px)`},{transform:"translate(0,0)"}],{duration:500+150*S.shake});
     try{onFlash()}catch(e){console.error(e)}
     // 결과 무대만 밝게 비추는 스포트라이트
-    const st=document.getElementById("mainStage");
+    const st=stage||document.getElementById("mainStage");
     if(st){ const r0=st.getBoundingClientRect(); if(r0.top<0||r0.bottom>innerHeight) st.scrollIntoView({block:"center"});
       const r=st.getBoundingClientRect(); spot=document.createElement("div"); spot.className="cine-spot";
       Object.assign(spot.style,{left:r.left+"px",top:r.top+"px",width:r.width+"px",height:r.height+"px",borderRadius:(r.width*.07)+"px"});
@@ -377,7 +453,7 @@ function cinematic({level=null,d=1,exact="",traits=[],onFlash=()=>{}}){
       timers.push(setTimeout(()=>spot.classList.add("on"),250)); }
   };
   const end=()=>{ if(done) return; done=true; timers.forEach(clearTimeout); flash(); ov.classList.add("out");
-    setTimeout(()=>{ov.remove();CINE.active=false},700); };
+    setTimeout(()=>{ov.close();ov.remove();CINE.active=false},700); };
   requestAnimationFrame(()=>ov.classList.add("in"));
   timers.push(setTimeout(()=>{ov.classList.add("charge");raf=requestAnimationFrame(tick)},CINE_IN));
   timers.push(setTimeout(()=>ov.classList.add("rumble"),CINE_IN+hold-1600));
@@ -387,7 +463,17 @@ function cinematic({level=null,d=1,exact="",traits=[],onFlash=()=>{}}){
   CINE.finish=end;
 }
 
-function roll(){
+/* 자동 굴리기: 켜 두면 AUTO_INTERVAL마다 저절로 굴리고, 직접 굴리기는 막힘 */
+const AUTO_INTERVAL=3000;
+const AUTO={on:false,next:0};
+function setAuto(on){
+  AUTO.on=on; AUTO.next=Date.now()+AUTO_INTERVAL;
+  $("#autoRoll").checked=on; btn.classList.toggle("auto",on);
+  $("#rollHint").textContent=on?"자동 굴리기 중이에요. 3초마다 저절로 굴려지고, 직접 굴리기는 막혀요."
+                               :"스페이스바로도 굴릴 수 있어요. 1초마다 한 번씩 굴릴 수 있어요.";
+}
+function roll(src){
+  if(AUTO.on&&src!=="auto") return;
   if(remaining()>0||CINE.active) return;
   previewIds=null; document.querySelectorAll("#devList input").forEach(i=>i.checked=false);
   const now=Date.now();
@@ -397,16 +483,14 @@ function roll(){
   const newCombo=!state.combos[key];
   state.total++; state.lastRollAt=now;
   for(const id of ids) state.attrs[id]=(state.attrs[id]||0)+1;
-  const cb=state.combos[key]||{c:0,f:now,l:now}; cb.c++; cb.l=now; state.combos[key]=cb;
-  state.history.unshift({a:ids,t:now}); if(state.history.length>HISTORY_MAX) state.history.length=HISTORY_MAX;
+  const cb=state.combos[key]||{c:0,f:now,l:now,n:state.total}; cb.c++; cb.l=now; state.combos[key]=cb;
+  state.history.unshift({a:ids,t:now,n:state.total}); if(state.history.length>HISTORY_MAX) state.history.length=HISTORY_MAX;
   lastRollInfo={ids,newAttrs,newCombo,t:now};
   persist();
   renderStats();
-  const d=denOf(ids), t=tier(d);
-  const tierCine=!!(t&&t.i>=CINE_FROM);
-  const rare=ids.filter(id=>AMAP[id].p>=TRAIT_CINE_MIN).sort((a,b)=>AMAP[b].p-AMAP[a].p);
-  if((tierCine||rare.length)&&!rmotion()){
-    cinematic({level:tierCine?t.i:null,d,exact:denBig(ids).toLocaleString("ko-KR"),traits:rare,onFlash:()=>{renderMain(true);renderPanes()}});
+  const ci=cineInfo(ids);
+  if(ci&&!rmotion()){
+    cinematic({...ci,onFlash:()=>{renderMain(true);renderPanes()}});
   } else { renderMain(true); renderPanes(); }
 }
 
@@ -424,7 +508,7 @@ function probHTML(ids,label){
 function renderMain(fresh){
   const stage=$("#mainStage");
   const ids=previewIds||(state.history[0]?state.history[0].a:[]);
-  renderStage(stage,ids);
+  renderStage(stage,ids,{serial:previewIds?null:(state.history[0]&&state.history[0].n)});
   const res=$("#result");
   if(previewIds){res.innerHTML=probHTML(ids,"미리보기 (저장되지 않음)")+`<ul class="chips">${chipsHTML(ids)}</ul>`;return}
   if(!state.history.length){res.innerHTML=`<div class="prob"><span class="lbl">아직 굴리지 않았어요</span><b>기본 이미지</b></div><p class="meta">굴리면 수십 가지 속성이 각자의 확률로 붙어요. 여러 속성이 한꺼번에 붙을 수도 있어요.</p>`;return}
@@ -462,12 +546,12 @@ function renderHistory(){
   const ul=document.createElement("ul"); ul.className="hist";
   state.history.slice(0,50).forEach(h=>{
     const li=document.createElement("li"); const b=document.createElement("button"); b.type="button";
-    b.appendChild(miniStage(h.a,72));
+    b.appendChild(miniStage(h.a,72,h.n));
     const names=document.createElement("div"); names.className="names";
     names.innerHTML=h.a.length?sortIds(h.a).map(id=>`<span>${esc(AMAP[id].name)}</span>`).join(""):`<span class="none">기본 이미지</span>`;
     const when=document.createElement("div"); when.className="when";
     when.innerHTML=`<b>1/${fmtDen(denOf(h.a))}</b>${ago(h.t)}`;
-    b.append(names,when); b.onclick=()=>openViewer(h.a); li.appendChild(b); ul.appendChild(li);
+    b.append(names,when); b.onclick=()=>openViewer(h.a,h.n); li.appendChild(b); ul.appendChild(li);
   });
   pane.appendChild(ul);
   if(state.history.length>50){const p=document.createElement("p");p.className="help";p.style.margin="12px 0 0";p.textContent="최근 50개까지 보여요. 이전 결과는 도감에서 찾을 수 있어요.";pane.appendChild(p)}
@@ -499,7 +583,7 @@ function renderCollection(){
   else if(!list.length){grid.innerHTML=`<p class="empty" style="grid-column:1/-1">조건에 맞는 모습이 없어요. 속성을 눌러 조건을 바꿔 보세요.</p>`}
   list.slice(0,colLimit).forEach(e=>{
     const b=document.createElement("button"); b.type="button"; b.className="card";
-    b.appendChild(miniStage(e.ids,110));
+    b.appendChild(miniStage(e.ids,110,e.n));
     const p=document.createElement("div");p.className="p";p.textContent="1/"+fmtDen(e.d);
     const n=document.createElement("div");n.className="n";n.textContent=e.ids.length?e.ids.map(i=>AMAP[i].name).join(", "):"기본 이미지";
     const c=document.createElement("div");c.className="c";c.textContent=`${e.c}번 뽑음`;
@@ -521,13 +605,22 @@ function renderDex(){
   }
 }
 
-function openViewer(ids){
+function openViewer(ids,serial){
   const dlg=$("#viewer"); dlg.showModal();
-  renderStage($("#viewStage"),ids);
   const cb=state.combos[keyOf(ids)];
+  if(serial==null&&cb) serial=cb.n;
+  dlg._serial=serial;
+  renderStage($("#viewStage"),ids,{serial});
   $("#viewInfo").innerHTML=probHTML(ids,"이 모습이 나올 확률")+`<ul class="chips">${chipsHTML(ids)}</ul>`+
     (cb?`<p class="meta">${cb.c}번 뽑았어요. 마지막으로 뽑은 때: ${ago(cb.l)}</p>`:"");
   dlg._ids=ids;
+  const ci=cineInfo(ids);
+  if(ci){
+    const b=document.createElement("button"); b.type="button"; b.className="replay"; b.textContent="연출 다시 보기";
+    b.onclick=()=>{ if(CINE.active) return; const vs=$("#viewStage");
+      cinematic({...ci,stage:vs,onFlash:()=>renderStage(vs,ids,{serial})}); };
+    $("#viewInfo").appendChild(b);
+  }
 }
 $("#closeViewer").onclick=()=>$("#viewer").close();
 $("#viewer").addEventListener("click",e=>{if(e.target.id==="viewer")e.target.close()});
@@ -547,17 +640,27 @@ $("#colMore").onclick=()=>{colLimit+=60;renderCollection()};
 
 /* roll button */
 const btn=$("#rollBtn");
-btn.onclick=roll;
+btn.onclick=()=>roll("manual");
+$("#autoRoll").addEventListener("change",e=>setAuto(e.target.checked));
 document.addEventListener("keydown",e=>{
   if(CINE.active){if(e.code==="Space"||e.key==="Enter"||e.key==="Escape"){e.preventDefault();CINE.finish&&CINE.finish()}return}
-  if(e.code==="Space"&&!e.repeat&&!$("#viewer").open&&!$("#alertBox").open&&!/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)&&!document.activeElement.closest("[role=button]")){e.preventDefault();roll()}
+  if(e.code==="Space"&&!e.repeat&&!$("#viewer").open&&!$("#alertBox").open&&!/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)&&!document.activeElement.closest("[role=button]")){e.preventDefault();roll("manual")}
 });
 function tick(){
-  const r=remaining();
-  btn.classList.toggle("ready",r===0);
-  btn.style.setProperty("--p",(1-r/COOLDOWN).toFixed(3));
-  btn.setAttribute("aria-disabled",r>0?"true":"false");
-  const label=r>0?`${Math.ceil(r/1000)}초 후 굴리기`:"굴리기";
+  let r=remaining(), p=1-r/COOLDOWN, label;
+  if(AUTO.on){
+    const now=Date.now();
+    if(CINE.active) AUTO.next=now+AUTO_INTERVAL;          // 연출 중에는 대기, 끝난 뒤 3초 후 다음 굴리기
+    else if(now>=AUTO.next){ roll("auto"); AUTO.next=now+AUTO_INTERVAL; }
+    const left=Math.max(0,AUTO.next-Date.now());
+    p=1-left/AUTO_INTERVAL; label=`자동 굴리기 · ${Math.ceil(left/1000)}초 후`;
+    btn.classList.remove("ready"); btn.setAttribute("aria-disabled","true");
+  } else {
+    btn.classList.toggle("ready",r===0);
+    btn.setAttribute("aria-disabled",r>0?"true":"false");
+    label=r>0?`${Math.ceil(r/1000)}초 후 굴리기`:"굴리기";
+  }
+  btn.style.setProperty("--p",p.toFixed(3));
   if($("#rollLabel").textContent!==label)$("#rollLabel").textContent=label;
   requestAnimationFrame(tick);
 }
@@ -566,7 +669,7 @@ function tick(){
 setInterval(()=>{if(activeTab==="hist"&&!document.hidden)renderHistory()},30000);
 
 /* resize → re-render full-size stages (filters use px) */
-let rz; addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{renderMain(false);if($("#viewer").open)renderStage($("#viewStage"),$("#viewer")._ids)},200)});
+let rz; addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{renderMain(false);if($("#viewer").open)renderStage($("#viewStage"),$("#viewer")._ids,{serial:$("#viewer")._serial})},200)});
 
 /* dev mode: open with #dev at the end of the address */
 let devReady=false;

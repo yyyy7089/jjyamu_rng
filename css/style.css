@@ -227,9 +227,14 @@ dialog .stage{width:100%;clear:both}
 .acc-halo{left:56%;top:-3%;width:50%;height:12%;transform:translateX(-50%);border-radius:50%;border:1.3cqw solid #FFE27A;
   box-shadow:0 0 3cqw #FFE27A,inset 0 0 1.5cqw #FFF6C8;animation:k-halo 2.6s ease-in-out infinite}
 @keyframes k-halo{50%{transform:translate(-50%,-2cqh)}}
-.acc-bang{right:-6%;top:6%;width:24%;aspect-ratio:1;border-radius:50%;background:#fff;border:.6cqw solid #221C45;
-  display:grid;place-items:center;font-family:var(--display);font-size:10cqw;line-height:1;color:#FF3B5C;animation:k-bob 1s ease-in-out infinite}
-@keyframes k-bob{50%{transform:translateY(-1.8cqh) rotate(8deg)}}
+/* 느낌표: 만화 효과음 같은 톱니 폭발 말풍선 + 굵은 느낌표 */
+.acc-bang{right:-7%;top:2%;width:26%;aspect-ratio:1;display:grid;place-items:center;transform:rotate(-6deg);filter:drop-shadow(0 .5cqw 0 rgba(34,28,69,.35))}
+.acc-bang .burst{position:absolute;inset:0;clip-path:polygon(50.0% 0.0%,58.0% 14.9%,71.7% 5.0%,74.9% 18.7%,89.1% 18.8%,82.4% 34.4%,98.7% 38.9%,90.0% 50.0%,98.7% 61.1%,82.4% 65.6%,89.1% 81.2%,74.9% 81.3%,71.7% 95.0%,58.0% 85.1%,50.0% 100.0%,41.1% 89.0%,28.3% 95.0%,27.6% 78.1%,10.9% 81.2%,14.0% 67.4%,1.3% 61.1%,14.0% 50.0%,1.3% 38.9%,14.0% 32.6%,10.9% 18.8%,27.6% 21.9%,28.3% 5.0%,41.1% 11.0%);background:#221C45}
+.acc-bang .burst::after{content:"";position:absolute;inset:7%;clip-path:polygon(50.0% 0.0%,58.0% 14.9%,71.7% 5.0%,74.9% 18.7%,89.1% 18.8%,82.4% 34.4%,98.7% 38.9%,90.0% 50.0%,98.7% 61.1%,82.4% 65.6%,89.1% 81.2%,74.9% 81.3%,71.7% 95.0%,58.0% 85.1%,50.0% 100.0%,41.1% 89.0%,28.3% 95.0%,27.6% 78.1%,10.9% 81.2%,14.0% 67.4%,1.3% 61.1%,14.0% 50.0%,1.3% 38.9%,14.0% 32.6%,10.9% 18.8%,27.6% 21.9%,28.3% 5.0%,41.1% 11.0%);
+  background:radial-gradient(circle at 50% 40%,#FFF6A8 0,#FFD93A 45%,#FF9F1C 100%)}
+.acc-bang b{position:relative;font-family:"Black Han Sans","Do Hyeon",sans-serif;font-weight:400;font-size:15cqw;line-height:1;
+  color:#FF2D55;-webkit-text-stroke:.7cqw #221C45;paint-order:stroke fill;transform:rotate(12deg) translateY(4%);
+  text-shadow:.6cqw .6cqw 0 #221C45}
 .rays{position:absolute;inset:-45%;background:repeating-conic-gradient(from 0deg,rgba(255,214,90,.38) 0 9deg,transparent 9deg 18deg);animation:k-spin 24s linear infinite}
 
 

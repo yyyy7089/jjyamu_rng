@@ -311,7 +311,7 @@ const ATTRS = [
   {id:"blink",   name:"점멸",       p:1234,   apply:c=>c.overlays.push("o-flash")},
   {id:"shake",   name:"덜덜",       p:1300,     apply:c=>c.anims.push("a-shake")},
   {id:"button",  name:"버튼",       p:1500,   apply:c=>{c.button=true}},
-  {id:"bang",    name:"느낌표",     p:1700,     apply:c=>c.acc.push({cls:"acc-bang",text:"!"})},
+  {id:"bang",    name:"느낌표",     p:1700,     apply:c=>c.acc.push({cls:"acc-bang",html:"<i class=\"burst\"></i><b>!</b>"})},
   {id:"giant",   name:"거대",       p:2000,   apply:c=>c.transforms.push("scale(2)")},
   {id:"wood",    name:"액자",       p:2200,     apply:c=>c.frames.push("f-wood")},
   {id:"dori",    name:"도리도리",   p:2500,   apply:c=>c.anims.push("a-dori")},

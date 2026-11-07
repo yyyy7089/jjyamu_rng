@@ -485,7 +485,7 @@ function cinematic({level=null,d=1,exact="",traits=[],onFlash=()=>{},stage=null}
 
 /* 자동 굴리기: 켜 두면 AUTO_INTERVAL마다 저절로 굴리고, 직접 굴리기는 막힘 */
 // [자동 굴리기를 켜 둔 시간(ms), 그때부터의 간격(ms)]
-const AUTO_STEPS=[[0,2000],[5*60e3,3000],[15*60e3,4000],[60*60e3,5000],[180*60e3,10000]];
+const AUTO_STEPS=[[0,2000],[5*60e3,3000],[15*60e3,4000],[30*60e3,5000],[60*60e3,10000],[180*60e3,30000]];
 const AUTO={on:false,next:0,since:0};
 function autoStep(){const e=Date.now()-AUTO.since;let k=0;AUTO_STEPS.forEach(([t],i)=>{if(e>=t)k=i});return k}
 const autoInterval=()=>AUTO_STEPS[autoStep()][1];

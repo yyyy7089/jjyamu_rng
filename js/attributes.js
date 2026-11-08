@@ -203,6 +203,13 @@ const FX = {
       <div class="dy-hill h1"></div><div class="dy-hill h2"></div><div class="dy-hill h3"></div>
       <div class="dy-ff">${ff}</div>`;
   },
+  /* ---- 집중선: 굵기와 간격이 제각각인 만화 집중선 ---- */
+  focusLines(layer){
+    let a=0, stops=[];
+    while(a<360){const w=.25+Math.random()*1.1, gap=1+Math.random()*4.5;
+      stops.push(`transparent ${a.toFixed(2)}deg`,`#18122e ${a.toFixed(2)}deg`,`#18122e ${(a+w).toFixed(2)}deg`,`transparent ${(a+w).toFixed(2)}deg`); a+=w+gap}
+    layer.appendChild(FX.el("div","flines",{background:`conic-gradient(from 0deg,${stops.join(",")})`}));
+  },
   /* ---- 대행진: 줄지어 행진하는 작은 쨔무쨔무들 ---- */
   parade(layer,env){
     const rows=[{top:50,size:11,dur:30,op:.6,n:9},{top:63,size:14,dur:24,op:.8,n:8},{top:78,size:18,dur:18,op:1,n:7}];
@@ -316,12 +323,15 @@ const ATTRS = [
   {id:"wood",    name:"액자",       p:2200,     apply:c=>c.frames.push("f-wood")},
   {id:"dori",    name:"도리도리",   p:2500,   apply:c=>c.anims.push("a-dori")},
   {id:"snow",    name:"눈",         p:3000,     apply:c=>c.particles.push({type:"snow",n:24})},
+  {id:"sticker", name:"스티커",     p:3137,   apply:c=>{c.shadows.push(u=>{const d=1.5*u,k="#fff";return [[d,0],[-d,0],[0,d],[0,-d],[d*.7,d*.7],[-d*.7,d*.7],[d*.7,-d*.7],[-d*.7,-d*.7]].map(([x,y])=>`drop-shadow(${x.toFixed(1)}px ${y.toFixed(1)}px 0 ${k})`).join(" ")+` drop-shadow(${.5*u}px ${1.2*u}px ${.8*u}px rgba(30,20,60,.35))`});c.transforms.push("rotate(-4deg)")}},
   {id:"neon",    name:"네온",       p:4000,    apply:c=>c.shadows.push(u=>`drop-shadow(0 0 ${1.2*u}px #3cf6ff) drop-shadow(0 0 ${3*u}px #3cf6ff)`)},
+  {id:"confetti",name:"콘페티",     p:4321,   apply:c=>c.particles.push({type:"confetti",n:44})},
   {id:"convex",  name:"볼록",       p:4800,   apply:c=>c.lens.push("bulge")},
   {id:"ghost",   name:"유령",       p:5000,    apply:c=>{c.opacity*=.42}},
   {id:"upside",  name:"거꾸로",     p:7000,    apply:c=>c.transforms.push("rotate(180deg)")},
   {id:"fisheye", name:"어안",       p:7200,   apply:c=>{c.fisheye=true;c.layers.push({back:false,build:FX.fisheye})}},
   {id:"arrow",   name:"화살표",     p:7500,   apply:c=>c.badges.push({src:BADGE_IMAGES.arrow,p:7500})},
+  {id:"focus",   name:"집중선",     p:8192,   apply:c=>{c.bg.push({image:"radial-gradient(circle,#ffffff 0,#f4f1ff 60%,#e4ddfa)"});c.layers.push({back:true,build:FX.focusLines})}},
   {id:"double",  name:"겹테두리", p:9000,   apply:c=>c.frames.push("f-double")},
   {id:"demon",   name:"데몬",       p:10000,  apply:c=>c.badges.push({src:BADGE_IMAGES.demon,p:10000})},
   {id:"pixel",   name:"픽셀",       p:12000,    apply:c=>{c.pixel=true}},
@@ -329,6 +339,7 @@ const ATTRS = [
   {id:"bubble",  name:"거품",       p:15000,    apply:c=>c.particles.push({type:"bubble",n:10})},
   {id:"moon",    name:"위성",       p:17500,  apply:c=>{c.satellite=true}},
   {id:"scan",    name:"스캔라인",   p:20000,    apply:c=>c.overlays.push("o-scan")},
+  {id:"decal",   name:"데칼코마니", p:22500, apply:c=>{c.decal=true}},
   {id:"spin",    name:"빙글",       p:25000,    apply:c=>c.anims.push("a-spin")},
   {id:"night",   name:"밤하늘",     p:30000,    apply:c=>{c.bg.push({image:"linear-gradient(rgba(14,10,52,.8),rgba(40,26,96,.72))"});c.particles.push({type:"star",n:34,back:true})}},
   {id:"jelly",   name:"말랑",       p:40000,    apply:c=>c.anims.push("a-jelly")},

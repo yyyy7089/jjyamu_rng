@@ -23,7 +23,11 @@
   <section class="play" aria-label="굴리기">
     <div class="stage" id="mainStage" aria-live="polite"></div>
     <button class="roll" id="rollBtn" type="button"><i class="fill"></i><span id="rollLabel">굴리기</span></button>
-    <label class="auto-toggle"><input type="checkbox" id="autoRoll" role="switch"><span class="sw" aria-hidden="true"></span>자동 굴리기 <span class="tip-wrap"><small id="autoEvery" tabindex="0" aria-describedby="autoTip">2초마다</small><span class="tip" id="autoTip" role="tooltip"></span></span></label>
+    <div class="toggles">
+      <label class="auto-toggle"><input type="checkbox" id="autoRoll" role="switch"><span class="sw" aria-hidden="true"></span>자동 굴리기 <span class="tip-wrap"><small id="autoEvery" tabindex="0" aria-describedby="autoTip">2초마다</small><span class="tip" id="autoTip" role="tooltip"></span></span></label>
+      <label class="auto-toggle" title="희귀 이상 결과의 화음과 연출 효과음"><input type="checkbox" id="sfxToggle" role="switch"><span class="sw" aria-hidden="true"></span>효과음</label>
+    </div>
+    <p class="low-note" id="lowNote" hidden>🔈 백그라운드 동작을 위해 들리지 않는 저주파를 재생 중이에요.</p>
     <p class="hint" id="rollHint">스페이스바로도 굴릴 수 있어요. 1초마다 한 번씩 굴릴 수 있어요.</p>
     <div class="result" id="result"></div>
     <div class="dev" id="dev" hidden>
@@ -48,6 +52,7 @@
         <span id="colSummary"></span>
         <span>
           <button class="clear" id="clearFilters" type="button" hidden>필터 지우기</button>
+          <select id="minTier" aria-label="등급"></select>
           <select id="sort" aria-label="정렬">
             <option value="rare">희귀한 순</option>
             <option value="count">많이 뽑은 순</option>

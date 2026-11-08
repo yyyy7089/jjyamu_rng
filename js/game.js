@@ -104,7 +104,7 @@ function lensFilter(el,type,size,anim){
   return `url(#${id})`;
 }
 function newCtx(){return {colors:[],img:[],tintK:1,transforms:[],anims:[],fxAnims:[],shadows:[],overlays:[],
-  bg:[],frames:[],particles:[],acc:[],behind:[],badges:[],layers:[],lens:[],fisheye:false,invisible:false,reflect:false,doodle:false,silhouette:false,button:false,explode:false,satellite:false,opacity:1,pixel:false,clone:false}}
+  bg:[],frames:[],particles:[],acc:[],behind:[],badges:[],layers:[],lens:[],fisheye:false,decal:false,invisible:false,reflect:false,doodle:false,silhouette:false,button:false,explode:false,satellite:false,opacity:1,pixel:false,clone:false}}
 
 function spawn(layer,type,n,mini){
   const count=mini?Math.ceil(n/3):n;
@@ -122,6 +122,9 @@ function spawn(layer,type,n,mini){
     else if(type==="ember"){const z=.7+r()*1;s.style.width=s.style.height=z+"cqw";s.style.left=10+r()*85+"%";dur=3+r()*3}
     else if(type==="petal"){const z=2.6+r()*2.4;s.style.width=z+"cqw";s.style.height=(z*.72)+"cqw";s.style.left=r()*110+"%";
       s.style.opacity=(.75+r()*.25).toFixed(2);dur=6+r()*5}
+    else if(type==="confetti"){s.style.width=(1.8+r()*1.4)+"cqw";s.style.height=(1+r()*.8)+"cqw";s.style.left=r()*100+"%";
+      s.style.background=["#ff4d6d","#ffb84d","#ffe14a","#4dd2ff","#7a4dff","#4dff88","#ff7ef0"][i%7];
+      s.style.setProperty("--sx",((r()-.5)*24).toFixed(1)+"cqw");s.style.setProperty("--sp",(r()<.5?-1:1)*(360+r()*540)+"deg");dur=3.2+r()*2.6}
     else if(type==="flake"){s.textContent="❄";s.style.fontSize=(2.4+r()*3)+"cqw";s.style.left=r()*100+"%";dur=8+r()*6}
     else if(type==="note"){s.textContent=["♪","♫","♬"][i%3];s.style.fontSize=(4+r()*4)+"cqw";s.style.left=r()*92+"%";
       s.style.color=["#ff7ef0","#6ff3ff","#ffe066","#b49bff"][i%4];dur=3.5+r()*2.5}
@@ -209,6 +212,13 @@ function renderStage(el,ids,opt={}){
     if(live){ const tb=el.querySelector(`#${id} feTurbulence`); let s=1;
       const boil=()=>{ if(!tb.isConnected) return; s=s%4+1; tb.setAttribute("seed",String(s*7)); el._timers.push(setTimeout(boil,130)); }; boil(); } }
 
+  // 데칼코마니: 왼쪽 절반을 거울처럼 오른쪽에 찍음
+  if(c.decal){
+    const k=fx.cloneNode(true); k.removeAttribute("tabindex"); k.removeAttribute("role");
+    k.style.transform="scaleX(-1)"; k.style.clipPath="inset(-30% 49.6% -30% -30%)"; k.style.pointerEvents="none";
+    fx.style.clipPath="inset(-30% 49.6% -30% -30%)";
+    w.appendChild(k);
+  }
   if(c.clone){
     for(const side of [-1,1]){const k=fx.cloneNode(true);k.classList.add("clone");
       k.style.transform=`translateX(${side*42}%) scale(.72)`;k.style.opacity=(c.opacity*.45).toFixed(2);w.appendChild(k)}
@@ -404,11 +414,136 @@ function cineInfo(ids){
   if(!tierCine&&!rare.length) return null;
   return {level:tierCine?t.i:null,d,exact:denBig(ids).toLocaleString("ko-KR"),traits:rare};
 }
+/* ---------------- 연출 효과음 (Web Audio로 직접 합성, 음원 파일 없음) ---------------- */
+const SFX={on:true,out:null,verb:null,noise:null};
+try{SFX.on=localStorage.getItem("jj-sfx")!=="0"}catch(e){}
+function audioCtx(){
+  try{
+    if(!KEEP.ctx){const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return null; KEEP.ctx=new AC();}
+    if(KEEP.ctx.state==="suspended"&&KEEP.ctx.resume) KEEP.ctx.resume().catch(()=>{});
+    return KEEP.ctx;
+  }catch(e){return null}
+}
+function sfxBus(ctx){
+  if(SFX.out&&SFX.out.context===ctx) return SFX;
+  const comp=ctx.createDynamicsCompressor(); comp.threshold.value=-14; comp.ratio.value=4; comp.connect(ctx.destination);
+  const out=ctx.createGain(); out.gain.value=.5; out.connect(comp);
+  // 잔향: 지수적으로 사라지는 잡음으로 만든 임펄스 응답
+  const len=Math.floor(ctx.sampleRate*2.8), ir=ctx.createBuffer(2,len,ctx.sampleRate);
+  for(let c=0;c<2;c++){const d=ir.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3)}
+  const verb=ctx.createConvolver(); verb.buffer=ir; const wet=ctx.createGain(); wet.gain.value=.38; verb.connect(wet).connect(out);
+  const nb=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate), nd=nb.getChannelData(0);
+  for(let i=0;i<nd.length;i++) nd[i]=Math.random()*2-1;
+  Object.assign(SFX,{out,verb,noise:nb}); return SFX;
+}
+// 짧은 음 하나: 소리 → (드라이 + 잔향)
+function sfxTone(ctx,dest,f,t,dur,{type="sine",gain=.2,att=.005,rel=null,glide=null,verb=.6,detune=0}={}){
+  const o=ctx.createOscillator(), g=ctx.createGain(); o.type=type; o.frequency.setValueAtTime(f,t); o.detune.value=detune;
+  if(glide) o.frequency.exponentialRampToValueAtTime(glide,t+dur);
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(gain,t+att);
+  g.gain.setTargetAtTime(0,t+att,rel??dur/4);
+  o.connect(g); g.connect(dest); if(verb){const s=ctx.createGain();s.gain.value=verb;g.connect(s).connect(SFX.verb)}
+  o.start(t); o.stop(t+dur+(rel??dur/4)*6);
+  return o;
+}
+function sfxNoise(ctx,dest,t,dur,{type="bandpass",f0=400,f1=6000,q=1,gain=.2,att=.01,verb=.4}={}){
+  const s=ctx.createBufferSource(); s.buffer=SFX.noise; s.loop=true;
+  const fl=ctx.createBiquadFilter(); fl.type=type; fl.Q.value=q; fl.frequency.setValueAtTime(f0,t); fl.frequency.exponentialRampToValueAtTime(f1,t+dur);
+  const g=ctx.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(gain,t+att);
+  s.connect(fl).connect(g).connect(dest); if(verb){const v=ctx.createGain();v.gain.value=verb;g.connect(v).connect(SFX.verb)}
+  s.start(t); s.stop(t+dur+2); return g;
+}
+const SEMI=n=>Math.pow(2,n/12);
+// 등급별·특성별 화음 (근음 Hz, 반음 간격)
+const CINE_CHORD=[null,null,null,null,
+  {root:261.63,iv:[0,4,7,12]},          // 전설: 다장조
+  {root:293.66,iv:[0,4,7,12,14]},       // 신화: 라장조 add9
+  {root:329.63,iv:[0,4,6,11,14]},       // 초월: 몽환적인 리디안
+  {root:220.00,iv:[0,7,12,16,19,24]},   // 태초: 넓게 펼친 화음 + 징
+  {root:261.63,iv:[0,4,7,11,14,16,19,23,24,28],arp:true}, // 무한: 무지개처럼 솟는 아르페지오
+];
+function traitChord(p){const lg=Math.log10(p);
+  return lg>=8?{root:440,iv:[0,4,7,9,14,19]}:lg>=6?{root:349.23,iv:[0,3,7,10,14]}:{root:392,iv:[0,4,7,11]}}
+
+/* 연출 하나의 소리. 미리 '모으기'까지 예약하고, flash()에서 터지는 소리를 냄 */
+function cineSound({level,traitP,hold}){
+  if(!SFX.on) return null;
+  const ctx=audioCtx(); if(!ctx) return null; sfxBus(ctx);
+  const isTrait=level==null, ch=isTrait?traitChord(traitP):CINE_CHORD[level];
+  const big=isTrait?Math.min(3,Math.max(0,Math.log10(traitP)-5)/1.5):level-4;   // 0(가장 약함) ~ 4(무한)
+  const t0=ctx.currentTime+.02, tc=t0+CINE_IN/1000, tf=tc+hold/1000;
+  const pre=ctx.createGain(); pre.gain.value=1; pre.connect(SFX.out);
+  const srcs=[];
+  // 1) 암전: 낮게 깔리는 웅웅거림
+  const dr=ctx.createBiquadFilter(); dr.type="lowpass"; dr.frequency.value=220; const dg=ctx.createGain();
+  dg.gain.setValueAtTime(0,t0); dg.gain.linearRampToValueAtTime(.16,tc); dg.gain.linearRampToValueAtTime(.17,tf);
+  dr.connect(dg).connect(pre);
+  for(const dt of [-7,7]){const o=ctx.createOscillator();o.type="sawtooth";o.frequency.value=ch.root/4;o.detune.value=dt;o.connect(dr);o.start(t0);o.stop(tf+1);srcs.push(o)}
+  // 2) 모으기: 음높이가 솟구치는 라이저 + 바람 소리
+  const rf=ctx.createBiquadFilter(); rf.type="lowpass"; rf.Q.value=6; rf.frequency.setValueAtTime(300,tc); rf.frequency.exponentialRampToValueAtTime(7000,tf);
+  const rg=ctx.createGain(); rg.gain.setValueAtTime(0,tc); rg.gain.linearRampToValueAtTime(isTrait?.04:.06,tf); rf.connect(rg).connect(pre);
+  {const o=ctx.createOscillator(); o.type=isTrait?"triangle":"sawtooth"; o.frequency.setValueAtTime(ch.root/2,tc); o.frequency.exponentialRampToValueAtTime(ch.root*4,tf);
+   o.connect(rf); o.start(tc); o.stop(tf+1); srcs.push(o);}
+  const wg=sfxNoise(ctx,pre,tc,hold/1000,{f0:300,f1:9000,q:.8,gain:.001,verb:.2}); wg.gain.linearRampToValueAtTime(.085,tf);
+  // 숫자가 올라가는 '틱' 소리: 점점 빨라짐
+  for(let t=tc+.15,gap=.24;t<tf-.05;t+=gap,gap=Math.max(.035,gap*.93))
+    sfxTone(ctx,pre,isTrait?2400:1800,t,.03,{type:"square",gain:.025,att:.001,rel:.012,verb:.15});
+  // 특성 연출: 모으는 동안 높은 종소리가 반짝임
+  if(isTrait) for(let t=tc+.3;t<tf-.2;t+=.18+Math.random()*.25)
+    sfxTone(ctx,pre,ch.root*4*SEMI(ch.iv[Math.random()*ch.iv.length|0]),t,.5,{gain:.035,rel:.25,verb:1});
+  // 섬광 직전 1.6초: 땅이 울리는 저음
+  {const o=ctx.createOscillator(), g=ctx.createGain(); o.frequency.value=48; g.gain.setValueAtTime(0,tf-1.6); g.gain.linearRampToValueAtTime(.2,tf);
+   const lfo=ctx.createOscillator(), lg=ctx.createGain(); lfo.frequency.value=11; lg.gain.value=.12; lfo.connect(lg).connect(g.gain);
+   o.connect(g).connect(pre); o.start(Math.max(tc,tf-1.6)); lfo.start(Math.max(tc,tf-1.6)); o.stop(tf+1); lfo.stop(tf+1); srcs.push(o,lfo);}
+
+  let done=false;
+  return {flash(at){
+    if(done) return; done=true; const t=at??ctx.currentTime;
+    pre.gain.cancelScheduledValues(t); pre.gain.setValueAtTime(pre.gain.value,t); pre.gain.setTargetAtTime(0,t,.04);
+    srcs.forEach(s=>{try{s.stop(t+.5)}catch(e){}});
+    const post=ctx.createGain(); post.gain.value=1; post.connect(SFX.out);
+    // 3) 섬광: 쾅 (저음 낙하 + 잡음 폭발)
+    sfxTone(ctx,post,isTrait?90:120,t,1.3,{gain:isTrait?.45:.7,att:.002,rel:.35,glide:32,verb:.3});
+    sfxNoise(ctx,post,t,1.4,{type:"lowpass",f0:9000,f1:300,q:.5,gain:isTrait?.3:.45,att:.003,verb:.6}).gain.setTargetAtTime(0,t+.05,.25);
+    // 4) 화음: 등급이 높을수록 음이 많고 길게 울림
+    const ring=2.2+big*.6;
+    ch.iv.forEach((s,i)=>{const f=ch.root*SEMI(s), st=t+(ch.arp?i*.07:.02+i*.012);
+      sfxTone(ctx,post,f,st,ring,{type:"triangle",gain:.11/Math.sqrt(1+i*.3),att:.01,rel:ring/3,verb:.9});
+      sfxTone(ctx,post,f*2,st,ring*.6,{gain:.05,att:.005,rel:ring/5,verb:1,detune:4});});
+    if(!ch.arp) sfxTone(ctx,post,ch.root/2,t+.02,ring,{type:"sawtooth",gain:.06,att:.03,rel:ring/3,verb:.5});
+    // 태초·무한: 징
+    if(big>=3) sfxTone(ctx,post,ch.root/2*1.01,t+.05,4,{gain:.18,att:.02,rel:1.4,verb:1,glide:ch.root/2*.97});
+    // 높은 반짝임
+    const n=isTrait?10:4+big*3;
+    for(let i=0;i<n;i++){const s=ch.iv[i%ch.iv.length]+12*(2+(i/ch.iv.length|0)%2);
+      sfxTone(ctx,post,ch.root*SEMI(s),t+.25+i*(isTrait?.09:.06),.6,{gain:.03,rel:.3,verb:1})}
+    setTimeout(()=>{try{pre.disconnect()}catch(e){}},2000);
+  }};
+}
+// 희귀·영웅: 연출 없이 결과가 나올 때 짧은 화음
+const REVEAL_CHORD={2:{root:392,iv:[0,4,7]},3:{root:440,iv:[0,4,7,12,16]}};
+function revealChord(level){
+  if(!SFX.on) return;
+  const ch=REVEAL_CHORD[level]; if(!ch) return;
+  const ctx=audioCtx(); if(!ctx) return; sfxBus(ctx);
+  const t=ctx.currentTime+.02, ring=level>=3?1.6:1.1;
+  ch.iv.forEach((s,i)=>{const f=ch.root*SEMI(s), st=t+i*.045;
+    sfxTone(ctx,SFX.out,f,st,ring,{type:"triangle",gain:.085/Math.sqrt(1+i*.3),att:.008,rel:ring/3,verb:.8});
+    sfxTone(ctx,SFX.out,f*2,st,ring*.5,{gain:.035,att:.005,rel:ring/5,verb:1,detune:4})});
+  if(level>=3) for(let i=0;i<4;i++) sfxTone(ctx,SFX.out,ch.root*4*SEMI(ch.iv[i%ch.iv.length]),t+.2+i*.06,.4,{gain:.022,rel:.2,verb:1});
+}
+function setSfx(on){
+  SFX.on=on; try{localStorage.setItem("jj-sfx",on?"1":"0")}catch(e){}
+  $("#sfxToggle").checked=on;
+  if(on){const ctx=audioCtx(); if(ctx){sfxBus(ctx); sfxTone(ctx,SFX.out,1046.5,ctx.currentTime+.02,.25,{gain:.08,rel:.1,verb:.6});
+    sfxTone(ctx,SFX.out,1568,ctx.currentTime+.1,.35,{gain:.06,rel:.15,verb:.8})}}
+}
 function cinematic({level=null,d=1,exact="",traits=[],onFlash=()=>{},stage=null}){
   const TS=level!=null?CINE_STYLE[level]:null;
   const top=traits.length?AMAP[traits[0]]:null;
   const TR=top?traitStyle(top.p):null;
   const S=TS||TR; const hold=Math.max(TS?TS.hold:0,TR?TR.hold:0);
+  const snd=cineSound({level:TS?level:null,traitP:top?top.p:0,hold});
   const target=TS?d:top.p;
   const exactStr=TS?(exact||Math.round(d).toLocaleString("ko-KR")):top.p.toLocaleString("ko-KR");
   const names=traits.map(id=>esc(AMAP[id].name));
@@ -458,7 +593,7 @@ function cinematic({level=null,d=1,exact="",traits=[],onFlash=()=>{},stage=null}
     if(p<1) raf=requestAnimationFrame(tick); };
   const timers=[]; let flashed=false, done=false, spot=null;
   CINE.active=true;
-  const flash=()=>{ if(flashed) return; flashed=true; cancelAnimationFrame(raf); num.textContent="1 / "+exactStr;
+  const flash=()=>{ if(flashed) return; flashed=true; if(snd) snd.flash(); cancelAnimationFrame(raf); num.textContent="1 / "+exactStr;
     ov.classList.remove("rumble"); ov.classList.add("flash");
     ov.querySelector(".cine-shake").animate(
       [{transform:"translate(0,0)"},{transform:`translate(${-7*S.shake}px,${5*S.shake}px)`},{transform:`translate(${6*S.shake}px,${-6*S.shake}px)`},
@@ -500,11 +635,37 @@ function renderAutoTip(){
   const rows=AUTO_STEPS.map(([t,iv],i)=>{const nx=AUTO_STEPS[i+1];
     const range=nx?`${t?fmt(t/60e3):"처음"} ~ ${fmt(nx[0]/60e3)}`:`${fmt(t/60e3)} 이후`;
     return `<li${i===k?' class="now"':""}><span>${range}</span><b>${iv/1000}초</b></li>`}).join("");
-  const html=`<strong>자동 굴리기 간격</strong><ul>${rows}</ul><em>켜 둔 시간이 길어질수록 느려져요. 껐다 켜면 처음부터 다시 시작해요.</em>
-    <em class="focus-note">다른 탭으로 옮기거나 창을 최소화해서 이 화면이 보이지 않으면 자동 굴리기가 잠시 멈춰요. 다시 돌아오면 바로 이어서 굴려요. 다른 창을 띄워 두더라도 이 화면이 조금이라도 보이면 계속 굴러가요. 멈춰 있던 시간도 켜 둔 시간에 포함돼서, 돌아왔을 때 간격이 느려져 있을 수 있어요.</em>`;
+  const html=`<strong>자동 굴리기 간격</strong><ul>${rows}</ul><em>오래 켜 둘수록 느려지고, 껐다 켜면 처음부터 시작해요.</em>
+    <em class="focus-note"><b>저주파 재생</b>켜 둔 동안만 들리지 않는 20Hz 저음을 아주 작게 재생해요. 소리가 나는 탭은 브라우저가 멈추지 않아서, 다른 탭에 있어도 계속 굴러가요. 다른 탭에 있을 때도 효과음은 그대로 들려요.</em>`;
   const tip=$("#autoTip"); if(tip._k!==k){tip.innerHTML=html;tip._k=k}
 }
+/* 백그라운드 유지: 자동 굴리기 중에는 사람이 들을 수 없는 20Hz 저음을 아주 작게 재생.
+   브라우저는 소리가 나는 탭의 타이머를 늦추거나 멈추지 않으므로, 다른 탭으로 옮겨도 계속 굴러감.
+   20Hz·-54dBFS는 사람 귀의 가청 한계보다 훨씬 작고, 대부분의 노트북·폰 스피커는 이 음역을 아예 못 냄. */
+const KEEP={ctx:null,gain:null,osc:null};
+function keepAlive(on){
+  try{
+    if(on){
+      if(KEEP.osc) return;
+      const ctx=audioCtx(); if(!ctx) return;
+      const osc=ctx.createOscillator(), g=ctx.createGain();
+      osc.type="sine"; osc.frequency.value=20; g.gain.value=0;
+      osc.connect(g).connect(ctx.destination); osc.start();
+      g.gain.setTargetAtTime(0.002,ctx.currentTime,0.3);
+      KEEP.osc=osc; KEEP.gain=g;
+    } else if(KEEP.osc){
+      // 자동 굴리기를 끄면 저주파 발생기 자체를 멈추고 없앰
+      const {osc,gain}=KEEP, t=KEEP.ctx.currentTime;
+      gain.gain.setTargetAtTime(0,t,0.08); osc.stop(t+0.5);
+      osc.onended=()=>{try{osc.disconnect();gain.disconnect()}catch(e){}};
+      KEEP.osc=null; KEEP.gain=null;
+    }
+  }catch(e){}
+  renderLowNote();
+}
+function renderLowNote(){ const n=$("#lowNote"); if(n) n.hidden=!KEEP.osc; }
 function setAuto(on){
+  keepAlive(on);
   AUTO.on=on; AUTO.since=Date.now(); AUTO.next=AUTO.since+autoInterval();
   $("#autoRoll").checked=on; btn.classList.toggle("auto",on);
   $("#autoEvery").textContent=`${AUTO_STEPS[0][1]/1000}초마다`;
@@ -528,9 +689,19 @@ function roll(src){
   persist();
   renderStats();
   const ci=cineInfo(ids);
-  if(ci&&!rmotion()){
+  if(ci&&!rmotion()&&!document.hidden){
     cinematic({...ci,onFlash:()=>{renderMain(true);renderPanes()}});
-  } else { renderMain(true); renderPanes(); }
+  } else {
+    renderMain(true); renderPanes();
+    if(ci&&document.hidden) cineSoundOnly(ci);
+  }
+}
+/* 다른 탭에 있을 때: 화면 연출은 생략하고 효과음만 그대로 재생 */
+function cineSoundOnly({level,traits}){
+  const top=traits&&traits.length?AMAP[traits[0]]:null;
+  const hold=Math.max(level!=null?CINE_STYLE[level].hold:0, top?traitStyle(top.p).hold:0);
+  const snd=cineSound({level,traitP:top?top.p:0,hold});
+  if(snd) setTimeout(()=>snd.flash(),CINE_IN+hold);
 }
 
 /* ---------------- UI rendering ---------------- */
@@ -562,6 +733,7 @@ function renderMain(fresh){
     stage.classList.remove("reveal"); void stage.offsetWidth; stage.classList.add("reveal");
     const t=tier(denOf(ids));
     if(t&&t.i>=BANNER_FROM){
+      if(!CINE.active&&!cineInfo(ids)) revealChord(t.i);
       const b=document.createElement("div");b.className="banner "+t.c;b.textContent=t.n+"!";
       stage.appendChild(b); setTimeout(()=>b.remove(),1900);
     }
@@ -597,6 +769,7 @@ function renderHistory(){
 }
 
 const filt={}; // id -> "in" | "out"
+let minTier=0;  // 도감 등급 필터 (TIERS 인덱스)
 let colLimit=60;
 function renderCollection(){
   const fbox=$("#filters"); fbox.innerHTML="";
@@ -610,9 +783,13 @@ function renderCollection(){
     fbox.appendChild(b);
   }
   const inc=Object.keys(filt).filter(k=>filt[k]==="in"), exc=Object.keys(filt).filter(k=>filt[k]==="out");
-  $("#clearFilters").hidden=!(inc.length||exc.length);
-  let list=Object.entries(state.combos).map(([k,v])=>({k,ids:idsOf(k),...v,d:denOf(idsOf(k))}))
-    .filter(e=>inc.every(i=>e.ids.includes(i))&&!exc.some(i=>e.ids.includes(i)));
+  $("#clearFilters").hidden=!(inc.length||exc.length||minTier);
+  let all=Object.entries(state.combos).map(([k,v])=>({k,ids:idsOf(k),...v,d:denOf(idsOf(k))}));
+  // 등급 필터: 뽑은 적 있는 가장 높은 등급까지만 선택지로 보여줌
+  const topTier=all.reduce((m,e)=>{const t=tier(e.d);return Math.max(m,t?t.i:0)},0);
+  const sel=$("#minTier"); if(minTier>topTier) minTier=0;
+  sel.innerHTML=TIERS.slice(0,all.length?topTier+1:1).map((t,i)=>`<option value="${i}"${i===minTier?" selected":""}>${t.n} 이상</option>`).join("");
+  let list=all.filter(e=>inc.every(i=>e.ids.includes(i))&&!exc.some(i=>e.ids.includes(i))&&(tier(e.d)?.i??0)>=minTier);
   const sort=$("#sort").value;
   list.sort(sort==="count"?(a,b)=>b.c-a.c||b.d-a.d:sort==="recent"?(a,b)=>b.l-a.l:(a,b)=>b.d-a.d||b.c-a.c);
   const totalHits=list.reduce((s,e)=>s+e.c,0);
@@ -674,7 +851,8 @@ document.querySelectorAll(".tabs button").forEach(btn=>{
   };
 });
 $("#sort").onchange=()=>{colLimit=60;renderCollection()};
-$("#clearFilters").onclick=()=>{for(const k in filt)delete filt[k];renderCollection()};
+$("#minTier").onchange=e=>{minTier=+e.target.value;colLimit=60;renderCollection()};
+$("#clearFilters").onclick=()=>{for(const k in filt)delete filt[k];minTier=0;renderCollection()};
 $("#colMore").onclick=()=>{colLimit+=60;renderCollection()};
 
 /* roll button */
@@ -690,6 +868,8 @@ document.addEventListener("keydown",e=>{
 document.addEventListener("keyup",e=>heldKeys.delete(e.code),true);
 addEventListener("blur",()=>heldKeys.clear());
 $("#autoRoll").addEventListener("change",e=>setAuto(e.target.checked));
+$("#sfxToggle").checked=SFX.on;
+$("#sfxToggle").addEventListener("change",e=>setSfx(e.target.checked));
 renderAutoTip();
 // "2초마다"를 누르면 스위치는 그대로 두고 설명만 열고 닫음 (터치 기기용)
 $("#autoEvery").addEventListener("click",e=>{e.preventDefault();e.stopPropagation();$(".tip-wrap").classList.toggle("open")});
@@ -698,13 +878,19 @@ document.addEventListener("keydown",e=>{
   if(CINE.active){if(e.code==="Space"||e.key==="Enter"||e.key==="Escape"){e.preventDefault();CINE.finish&&CINE.finish()}return}
   if(e.code==="Space"&&!e.repeat&&!$("#viewer").open&&!$("#alertBox").open&&!/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)&&!document.activeElement.closest("[role=button]")){e.preventDefault();roll("manual")}
 });
+/* 자동 굴리기 판정은 화면 그리기(requestAnimationFrame)와 분리.
+   requestAnimationFrame은 탭이 안 보이면 완전히 멈추기 때문에 타이머로 돌림. */
+function autoPump(){
+  if(!AUTO.on) return;
+  const now=Date.now(), iv=autoInterval();
+  if(CINE.active) AUTO.next=now+iv;          // 연출 중에는 대기, 끝난 뒤 한 간격 뒤에 다음 굴리기
+  else if(now>=AUTO.next){ roll("auto"); AUTO.next=now+iv; }
+}
+setInterval(autoPump,250);
 function tick(){
   let r=remaining(), p=1-r/COOLDOWN, label;
   if(AUTO.on){
-    const now=Date.now();
     const iv=autoInterval();
-    if(CINE.active) AUTO.next=now+iv;          // 연출 중에는 대기, 끝난 뒤 한 간격 뒤에 다음 굴리기
-    else if(now>=AUTO.next){ roll("auto"); AUTO.next=now+iv; }
     const left=Math.max(0,AUTO.next-Date.now());
     p=Math.max(0,1-left/iv); label=`자동 굴리기 · ${Math.ceil(left/1000)}초 후`;
     const ev=`${iv/1000}초마다`; if($("#autoEvery").textContent!==ev) $("#autoEvery").textContent=ev;

@@ -9,10 +9,24 @@ function rand(){ // 53-bit crypto random in [0,1)
   return ((a[0]>>>5)*67108864+(a[1]>>>6))/9007199254740992;
 }
 const SUP="⁰¹²³⁴⁵⁶⁷⁸⁹";
-function fmtDen(d){
-  if(d<1e12) return Math.round(d).toLocaleString("ko-KR");
-  const e=Math.floor(Math.log10(d)); const m=d/Math.pow(10,e);
-  return m.toFixed(2)+" × 10"+String(e).split("").map(x=>SUP[+x]).join("");
+// 확률 분모 표기. big = 정확한 BigInt 값(있으면 사용). 표기 방식은 설정의 "확률 표기"
+function fmtDen(d,big){
+  const mode=(typeof state!=="undefined"&&owns("fmt"))?(state.cfg.fmt||"auto"):"auto";
+  const B=()=>big!=null?big:BigInt(Math.round(d));
+  if(mode==="full") return B().toLocaleString("ko-KR");
+  if(mode==="kor") return korNum(B());
+  if(mode==="exp"?d>=1e4:d>=1e12){
+    const e=Math.floor(Math.log10(d)); const m=d/Math.pow(10,e);
+    return m.toFixed(2)+" × 10"+String(e).split("").map(x=>SUP[+x]).join("");
+  }
+  return Math.round(d).toLocaleString("ko-KR");
+}
+const KOR_UNIT=["","만","억","조","경","해","자","양","구","간","정","재","극"];
+function korNum(b){
+  if(b<10000n) return b.toString();
+  const g=[]; let x=b; while(x>0n){g.push(Number(x%10000n)); x/=10000n;}
+  const out=[]; for(let i=g.length-1;i>=0&&out.length<2;i--) if(g[i]) out.push(g[i].toLocaleString("ko-KR")+KOR_UNIT[i]);
+  return out.join(" ");
 }
 const denBig = ids=>ids.reduce((m,id)=>m*BigInt(AMAP[id]?AMAP[id].p:1),1n);
 const denOf = ids=>ids.reduce((m,id)=>m*(AMAP[id]?AMAP[id].p:1),1);
@@ -30,7 +44,10 @@ const TIERS=[
 ];
 const BANNER_FROM=2; // 희귀 이상이면 배너 연출
 function tier(d){
-  for(let i=TIERS.length-1;i>=0;i--) if(d>=TIERS[i].min) return {n:TIERS[i].n,c:"t"+i,i};
+  for(let i=TIERS.length-1;i>=0;i--) if(d>=TIERS[i].min){
+    const plus=i<TIERS.length-1&&d>=TIERS[i].min*10; // 각 등급의 위쪽 1/10 구간은 "+" (무한 제외)
+    return {n:TIERS[i].n+(plus?"+":""),c:"t"+i,i,plus};
+  }
   return null;
 }
 function mixColors(list){
@@ -104,7 +121,7 @@ function lensFilter(el,type,size,anim){
   return `url(#${id})`;
 }
 function newCtx(){return {colors:[],img:[],tintK:1,transforms:[],anims:[],fxAnims:[],shadows:[],overlays:[],
-  bg:[],frames:[],particles:[],acc:[],behind:[],badges:[],layers:[],lens:[],fisheye:false,decal:false,invisible:false,reflect:false,doodle:false,silhouette:false,button:false,explode:false,satellite:false,opacity:1,pixel:false,clone:false}}
+  bg:[],frames:[],particles:[],acc:[],behind:[],badges:[],layers:[],lens:[],fisheye:false,decal:false,doppel:false,wcolor:false,invisible:false,reflect:false,doodle:false,silhouette:false,button:false,explode:false,satellite:false,opacity:1,pixel:false,clone:false}}
 
 function spawn(layer,type,n,mini){
   const count=mini?Math.ceil(n/3):n;
@@ -139,7 +156,7 @@ function spawn(layer,type,n,mini){
 const BADGE={size:16,gap:2.5,edge:3.5}; // 크기·간격·여백 (무대 너비 대비 %)
 function renderStage(el,ids,opt={}){
   const mini=!!opt.mini;
-  const live=!mini&&!opt.bare;
+  const live=!mini&&!opt.bare&&!opt.still;
   if(el._timers) el._timers.forEach(clearTimeout);
   el._timers=[];
   if(el._cleanup) el._cleanup.forEach(f=>{try{f()}catch(e){}});
@@ -212,6 +229,18 @@ function renderStage(el,ids,opt={}){
     if(live){ const tb=el.querySelector(`#${id} feTurbulence`); let s=1;
       const boil=()=>{ if(!tb.isConnected) return; s=s%4+1; tb.setAttribute("seed",String(s*7)); el._timers.push(setTimeout(boil,130)); }; boil(); } }
 
+  // 수채화: 윤곽이 번진 듯 살짝 흔들리고 부드러워짐 (정지)
+  if(c.wcolor){ const id="fxf"+(++FILTER_SEQ);
+    el.insertAdjacentHTML("beforeend",`<svg class="fdefs" aria-hidden="true"><filter id="${id}" x="-8%" y="-8%" width="116%" height="116%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="3" seed="9" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="${(1.5*u).toFixed(1)}" xChannelSelector="R" yChannelSelector="G" result="d"/>
+      <feGaussianBlur in="d" stdDeviation="${(.05*u).toFixed(2)}"/></filter></svg>`);
+    fx.style.filter=(fx.style.filter?fx.style.filter+" ":"")+`url(#${id})`; }
+  // 도플갱어: 뒤에서 한 박자 늦게 따라 움직이는 검은 그림자 쨔무
+  if(c.doppel){
+    const k=fx.cloneNode(true); k.removeAttribute("tabindex"); k.removeAttribute("role"); k.classList.add("doppel");
+    k.querySelectorAll(".acc").forEach(n=>n.remove()); w.appendChild(k);
+  }
   // 데칼코마니: 왼쪽 절반을 거울처럼 오른쪽에 찍음
   if(c.decal){
     const k=fx.cloneNode(true); k.removeAttribute("tabindex"); k.removeAttribute("role");
@@ -328,13 +357,26 @@ function miniStage(ids,size,serial){
 }
 
 /* ---------------- state & storage ---------------- */
-const COOLDOWN=1000, HISTORY_MAX=100, LS_KEY="henshin-gacha-v1";
-let state={total:0,lastRollAt:0,history:[],combos:{},attrs:{}};
+const COOLDOWN=1000, LS_KEY="henshin-gacha-v1";
+const histMax=()=>owns("archive")?500:100;
+let state={total:0,lastRollAt:0,history:[],combos:{},attrs:{},
+  points:0,spent:0,owned:[],cfg:{},favs:[],names:{},showcase:[],manual:0,auto:0,hours:Array(24).fill(0)};
 let lastRollInfo=null; // {ids, newAttrs:Set, newCombo, t}
 
 function serialize(){
   return {v:1,total:state.total,lastRollAt:state.lastRollAt,history:state.history,attrs:state.attrs,
+    points:state.points,spent:state.spent,owned:state.owned,cfg:state.cfg,favs:state.favs,names:state.names,showcase:state.showcase,
+    manual:state.manual,auto:state.auto,hours:state.hours,
     combos:Object.entries(state.combos).map(([k,v])=>({k,c:v.c,f:v.f,l:v.l,...(v.n!=null?{n:v.n}:{})}))};
+}
+// 상점에서 빠진 품목을 이미 샀다면 포인트를 돌려줌
+const REMOVED_ITEMS={notify:3000,palette:10000};
+function refundRemoved(o){
+  let points=o.points!=null?Math.max(0,+o.points||0):(o.total|0), spent=+o.spent||0;
+  const owned=(Array.isArray(o.owned)?o.owned:[]).filter(x=>typeof x==="string");
+  for(const [id,price] of Object.entries(REMOVED_ITEMS)) if(owned.includes(id)){points+=price;spent=Math.max(0,spent-price)}
+  const cfg=(o.cfg&&typeof o.cfg==="object")?{...o.cfg}:{}; delete cfg.blink; delete cfg.notify; delete cfg.palette;
+  return {points,spent,owned:owned.filter(x=>!(x in REMOVED_ITEMS)),cfg};
 }
 function deserialize(o){
   if(!o||typeof o!=="object") return null;
@@ -345,8 +387,15 @@ function deserialize(o){
     if(cur){cur.c+=e.c|0;cur.f=Math.min(cur.f,e.f||cur.f);cur.l=Math.max(cur.l,e.l||0);if(e.n!=null&&(cur.n==null||e.n<cur.n))cur.n=e.n}
     else combos[k]={c:e.c|0,f:e.f||0,l:e.l||0,...(e.n!=null?{n:e.n}:{})};
   }
-  return {total:o.total|0,lastRollAt:+o.lastRollAt||0,history:Array.isArray(o.history)?o.history.slice(0,HISTORY_MAX):[],
-    combos,attrs:(o.attrs&&typeof o.attrs==="object")?{...o.attrs}:{}};
+  const arr=(x,f)=>Array.isArray(x)?x.filter(f):[], obj=x=>(x&&typeof x==="object"&&!Array.isArray(x))?{...x}:{};
+  const hours=Array(24).fill(0); if(Array.isArray(o.hours)) o.hours.slice(0,24).forEach((v,i)=>hours[i]=+v||0);
+  return {total:o.total|0,lastRollAt:+o.lastRollAt||0,history:Array.isArray(o.history)?o.history.slice(0,500):[],
+    combos,attrs:obj(o.attrs),
+    // 포인트: 저장된 값이 없으면 지금까지 굴린 횟수만큼 소급 지급
+    points:o.points!=null?Math.max(0,+o.points||0):(o.total|0), spent:+o.spent||0,
+    owned:arr(o.owned,x=>typeof x==="string"), cfg:obj(o.cfg), favs:arr(o.favs,x=>typeof x==="string"),
+    names:obj(o.names), showcase:arr(o.showcase,x=>typeof x==="string").slice(0,6),
+    manual:o.manual|0, auto:o.auto|0, hours, ...refundRemoved(o)};
 }
 function saveLocal(){try{localStorage.setItem(LS_KEY,JSON.stringify(serialize()))}catch(e){}}
 function loadLocal(){try{return deserialize(JSON.parse(localStorage.getItem(LS_KEY)))}catch(e){return null}}
@@ -438,11 +487,17 @@ function sfxBus(ctx){
 }
 // 짧은 음 하나: 소리 → (드라이 + 잔향)
 function sfxTone(ctx,dest,f,t,dur,{type="sine",gain=.2,att=.005,rel=null,glide=null,verb=.6,detune=0}={}){
+  // 효과음 팩: 음높이가 있는 소리의 음색만 바꿈 (폭발음 같은 낙하음은 그대로)
+  const PK=glide==null?SFX.pack:null;
+  if(PK==="chip"){type="square";gain*=.5;verb*=.12;rel=(rel??dur/4)*.7}
+  else if(PK==="orgel"){type="sine";if(f<900)f*=2;rel=(rel??dur/4)*1.5;verb=Math.min(1.2,verb*1.4);gain*=1.1}
+  else if(PK==="orch"){type="sawtooth";gain*=.55;att=Math.max(att,.05);verb*=1.1}
   const o=ctx.createOscillator(), g=ctx.createGain(); o.type=type; o.frequency.setValueAtTime(f,t); o.detune.value=detune;
   if(glide) o.frequency.exponentialRampToValueAtTime(glide,t+dur);
   g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(gain,t+att);
   g.gain.setTargetAtTime(0,t+att,rel??dur/4);
-  o.connect(g); g.connect(dest); if(verb){const s=ctx.createGain();s.gain.value=verb;g.connect(s).connect(SFX.verb)}
+  if(PK==="orch"){const lp=ctx.createBiquadFilter();lp.type="lowpass";lp.frequency.value=1900;o.connect(lp).connect(g)} else o.connect(g);
+  g.connect(dest); if(verb){const s=ctx.createGain();s.gain.value=verb;g.connect(s).connect(SFX.verb)}
   o.start(t); o.stop(t+dur+(rel??dur/4)*6);
   return o;
 }
@@ -520,8 +575,8 @@ function cineSound({level,traitP,hold}){
     setTimeout(()=>{try{pre.disconnect()}catch(e){}},2000);
   }};
 }
-// 희귀·영웅: 연출 없이 결과가 나올 때 짧은 화음
-const REVEAL_CHORD={2:{root:392,iv:[0,4,7]},3:{root:440,iv:[0,4,7,12,16]}};
+// 영웅: 연출 없이 결과가 나올 때 짧은 화음
+const REVEAL_CHORD={3:{root:440,iv:[0,4,7,12,16]}};   // 영웅만 (희귀는 소리 없음)
 function revealChord(level){
   if(!SFX.on) return;
   const ch=REVEAL_CHORD[level]; if(!ch) return;
@@ -534,12 +589,13 @@ function revealChord(level){
 }
 function setSfx(on){
   SFX.on=on; try{localStorage.setItem("jj-sfx",on?"1":"0")}catch(e){}
-  $("#sfxToggle").checked=on;
+  const tg=$("#sfxToggle"); if(tg) tg.checked=on;
   if(on){const ctx=audioCtx(); if(ctx){sfxBus(ctx); sfxTone(ctx,SFX.out,1046.5,ctx.currentTime+.02,.25,{gain:.08,rel:.1,verb:.6});
     sfxTone(ctx,SFX.out,1568,ctx.currentTime+.1,.35,{gain:.06,rel:.15,verb:.8})}}
 }
 function cinematic({level=null,d=1,exact="",traits=[],onFlash=()=>{},stage=null}){
   const TS=level!=null?CINE_STYLE[level]:null;
+  const tName=level!=null?(tier(d)?.i===level?tier(d).n:TIERS[level].n):"";
   const top=traits.length?AMAP[traits[0]]:null;
   const TR=top?traitStyle(top.p):null;
   const S=TS||TR; const hold=Math.max(TS?TS.hold:0,TR?TR.hold:0);
@@ -552,9 +608,9 @@ function cinematic({level=null,d=1,exact="",traits=[],onFlash=()=>{},stage=null}
   ov.style.setProperty("--c1",S.c1); ov.style.setProperty("--c2",S.c2); ov.style.setProperty("--hold",hold+"ms");
   if(TR){ov.style.setProperty("--t1",TR.c1);ov.style.setProperty("--t2",TR.c2)}
   ov.setAttribute("role","status");
-  ov.setAttribute("aria-label",TS?`${TIERS[level].n} 등급, 1 / ${exactStr}`:`희귀 특성 ${AMAP[traits[0]].name}, 1 / ${exactStr}`);
+  ov.setAttribute("aria-label",TS?`${tName} 등급, 1 / ${exactStr}`:`희귀 특성 ${AMAP[traits[0]].name}, 1 / ${exactStr}`);
   const text=TS
-    ? `<b>${TIERS[level].n}</b><span class="cine-num">1 / 1</span>${names.length?`<em class="cine-traits">${names.join(", ")}</em>`:""}`
+    ? `<b>${tName}</b><span class="cine-num">1 / 1</span>${names.length?`<em class="cine-traits">${names.join(", ")}</em>`:""}`
     : `<small class="cine-cap">희귀 특성</small><b>${names[0]}</b><span class="cine-num">1 / 1</span>${names.length>1?`<em class="cine-traits">+ ${names.slice(1).join(", ")}</em>`:""}`;
   ov.innerHTML=`<div class="cine-dim"></div><div class="cine-stars"></div><div class="cine-shake"><div class="cine-fx">
       <div class="cine-rays"></div><div class="cine-streaks"></div><div class="cine-core"></div>
@@ -684,7 +740,9 @@ function roll(src){
   state.total++; state.lastRollAt=now;
   for(const id of ids) state.attrs[id]=(state.attrs[id]||0)+1;
   const cb=state.combos[key]||{c:0,f:now,l:now,n:state.total}; cb.c++; cb.l=now; state.combos[key]=cb;
-  state.history.unshift({a:ids,t:now,n:state.total}); if(state.history.length>HISTORY_MAX) state.history.length=HISTORY_MAX;
+  state.history.unshift({a:ids,t:now,n:state.total}); if(state.history.length>histMax()) state.history.length=histMax();
+  state.points++; if(src==="auto") state.auto++; else { state.manual++; playClick(); }
+  state.hours[new Date().getHours()]++;
   lastRollInfo={ids,newAttrs,newCombo,t:now};
   persist();
   renderStats();
@@ -712,7 +770,7 @@ function chipsHTML(ids,newSet){
 }
 function probHTML(ids,label){
   const d=denOf(ids),t=tier(d);
-  return `<div class="prob"><span class="lbl">${label}</span><b>1 / ${fmtDen(d)}</b>${t?`<span class="tier ${t.c}">${t.n}</span>`:""}</div>`;
+  return `<div class="prob"><span class="lbl">${label}</span><b>1 / ${fmtDen(d,denBig(ids))}</b>${t?`<span class="tier ${t.c}">${t.n}</span>`:""}</div>`;
 }
 
 function renderMain(fresh){
@@ -734,38 +792,53 @@ function renderMain(fresh){
     const t=tier(denOf(ids));
     if(t&&t.i>=BANNER_FROM){
       if(!CINE.active&&!cineInfo(ids)) revealChord(t.i);
-      const b=document.createElement("div");b.className="banner "+t.c;b.textContent=t.n+"!";
+      const b=document.createElement("div");b.className="banner "+t.c+(owns("banner")&&state.cfg.banner?" bs-"+state.cfg.banner:"");b.textContent=t.n+"!";
       stage.appendChild(b); setTimeout(()=>b.remove(),1900);
     }
   }
 }
 
+/* 포인트 표시는 전부 여기서만 갱신: 상단 통계, 상점 머리말, 상점 구매 버튼 */
+let shownPoints=null;
+function syncPoints(){
+  const p=state.points, txt=p.toLocaleString("ko-KR"); shownPoints=p;
+  $("#sPoints").textContent=txt;
+  const sp=$("#shopPoints"); if(sp) sp.textContent=txt;
+  document.querySelectorAll("#pane-shop .si-buy[data-price]").forEach(b=>{const ok=p>=+b.dataset.price;b.disabled=!ok;b.title=ok?"사기":"포인트가 부족해요"});
+}
 function renderStats(){
   const found=ATTRS.filter(a=>discovered(a.id)).length;
   $("#sTotal").textContent=state.total.toLocaleString("ko-KR");
   $("#sFound").textContent=`${found}/${ATTRS.length}`;
   $("#sCombos").textContent=Object.keys(state.combos).length.toLocaleString("ko-KR");
   $("#attrCount").textContent=`${found}/${ATTRS.length}`;
+  syncPoints();
+  if(owns("goldbtn")&&state.cfg.btn==="gold") $("#rollEngrave").textContent="No. "+state.total.toLocaleString("ko-KR");
 }
 
 let activeTab="hist";
-function renderPanes(){ if(activeTab==="hist")renderHistory(); else if(activeTab==="col")renderCollection(); else if(activeTab==="attr")renderDex(); }
+function renderPanes(){ if(activeTab==="hist")renderHistory(); else if(activeTab==="col")renderCollection(); else if(activeTab==="attr")renderDex();
+  else if(activeTab==="stats")renderStatsPane(); else if(activeTab==="shop")renderShop(); else if(activeTab==="set")renderSettings(); }
 
+let histShown=50;
 function renderHistory(){
   const pane=$("#pane-hist"); pane.innerHTML="";
   if(!state.history.length){pane.innerHTML=`<p class="empty">아직 굴린 기록이 없어요. 굴리기 버튼을 눌러 첫 모습을 뽑아 보세요.</p>`;return}
   const ul=document.createElement("ul"); ul.className="hist";
-  state.history.slice(0,50).forEach(h=>{
+  state.history.slice(0,histShown).forEach(h=>{
     const li=document.createElement("li"); const b=document.createElement("button"); b.type="button";
     b.appendChild(miniStage(h.a,72,h.n));
     const names=document.createElement("div"); names.className="names";
     names.innerHTML=h.a.length?sortIds(h.a).map(id=>`<span>${esc(AMAP[id].name)}</span>`).join(""):`<span class="none">기본 이미지</span>`;
     const when=document.createElement("div"); when.className="when";
-    when.innerHTML=`<b>1/${fmtDen(denOf(h.a))}</b>${ago(h.t)}`;
+    when.innerHTML=`<b>1/${fmtDen(denOf(h.a),denBig(h.a))}</b>${ago(h.t)}`;
     b.append(names,when); b.onclick=()=>openViewer(h.a,h.n); li.appendChild(b); ul.appendChild(li);
   });
   pane.appendChild(ul);
-  if(state.history.length>50){const p=document.createElement("p");p.className="help";p.style.margin="12px 0 0";p.textContent="최근 50개까지 보여요. 이전 결과는 도감에서 찾을 수 있어요.";pane.appendChild(p)}
+  if(state.history.length>histShown){const b=document.createElement("button");b.type="button";b.className="more";b.textContent="더 보기";
+    b.onclick=()=>{histShown+=50;renderHistory()};pane.appendChild(b)}
+  const p=document.createElement("p");p.className="help";p.style.margin="12px 0 0";
+  p.textContent=`최근 ${histMax()}개까지 보관해요.`+(owns("archive")?"":" 이전 결과는 도감에서 찾을 수 있어요.");pane.appendChild(p);
 }
 
 const filt={}; // id -> "in" | "out"
@@ -789,7 +862,8 @@ function renderCollection(){
   const topTier=all.reduce((m,e)=>{const t=tier(e.d);return Math.max(m,t?t.i:0)},0);
   const sel=$("#minTier"); if(minTier>topTier) minTier=0;
   sel.innerHTML=TIERS.slice(0,all.length?topTier+1:1).map((t,i)=>`<option value="${i}"${i===minTier?" selected":""}>${t.n} 이상</option>`).join("");
-  let list=all.filter(e=>inc.every(i=>e.ids.includes(i))&&!exc.some(i=>e.ids.includes(i))&&(tier(e.d)?.i??0)>=minTier);
+  $("#favOnlyWrap").hidden=!owns("fav"); const favOnly=owns("fav")&&$("#favOnly").checked;
+  let list=all.filter(e=>inc.every(i=>e.ids.includes(i))&&!exc.some(i=>e.ids.includes(i))&&(tier(e.d)?.i??0)>=minTier&&(!favOnly||isFav(e.k)));
   const sort=$("#sort").value;
   list.sort(sort==="count"?(a,b)=>b.c-a.c||b.d-a.d:sort==="recent"?(a,b)=>b.l-a.l:(a,b)=>b.d-a.d||b.c-a.c);
   const totalHits=list.reduce((s,e)=>s+e.c,0);
@@ -800,8 +874,9 @@ function renderCollection(){
   list.slice(0,colLimit).forEach(e=>{
     const b=document.createElement("button"); b.type="button"; b.className="card";
     b.appendChild(miniStage(e.ids,110,e.n));
-    const p=document.createElement("div");p.className="p";p.textContent="1/"+fmtDen(e.d);
-    const n=document.createElement("div");n.className="n";n.textContent=e.ids.length?e.ids.map(i=>AMAP[i].name).join(", "):"기본 이미지";
+    const p=document.createElement("div");p.className="p";p.textContent=(isFav(e.k)?"★ ":"")+"1/"+fmtDen(e.d,denBig(e.ids));
+    const n=document.createElement("div");n.className="n";const nm=comboName(e.k);
+    n.textContent=nm||(e.ids.length?e.ids.map(i=>AMAP[i].name).join(", "):"기본 이미지"); if(nm) n.classList.add("named");
     const c=document.createElement("div");c.className="c";c.textContent=`${e.c}번 뽑음`;
     b.append(p,n,c); b.onclick=()=>openViewer(e.ids); grid.appendChild(b);
   });
@@ -837,21 +912,23 @@ function openViewer(ids,serial){
       cinematic({...ci,stage:vs,onFlash:()=>renderStage(vs,ids,{serial})}); };
     $("#viewInfo").appendChild(b);
   }
+  viewerExtras(ids,serial);
 }
 $("#closeViewer").onclick=()=>$("#viewer").close();
+$("#viewer").addEventListener("close",()=>{LAST_GIF=null});
 $("#viewer").addEventListener("click",e=>{if(e.target.id==="viewer")e.target.close()});
 
 /* tabs */
-document.querySelectorAll(".tabs button").forEach(btn=>{
-  btn.onclick=()=>{
-    activeTab=btn.id.replace("tab-","");
-    document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b===btn?"true":"false"));
-    document.querySelectorAll(".pane").forEach(p=>p.hidden=p.id!=="pane-"+activeTab);
-    renderPanes();
-  };
-});
+function showTab(name){
+  activeTab=name;
+  document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.id==="tab-"+name?"true":"false"));
+  document.querySelectorAll(".pane").forEach(p=>p.hidden=p.id!=="pane-"+name);
+  renderPanes();
+}
+document.querySelectorAll(".tabs button").forEach(btn=>{ btn.onclick=()=>showTab(btn.id.replace("tab-","")); });
 $("#sort").onchange=()=>{colLimit=60;renderCollection()};
 $("#minTier").onchange=e=>{minTier=+e.target.value;colLimit=60;renderCollection()};
+$("#favOnly").onchange=()=>{colLimit=60;renderCollection()};
 $("#clearFilters").onclick=()=>{for(const k in filt)delete filt[k];minTier=0;renderCollection()};
 $("#colMore").onclick=()=>{colLimit+=60;renderCollection()};
 
@@ -868,8 +945,7 @@ document.addEventListener("keydown",e=>{
 document.addEventListener("keyup",e=>heldKeys.delete(e.code),true);
 addEventListener("blur",()=>heldKeys.clear());
 $("#autoRoll").addEventListener("change",e=>setAuto(e.target.checked));
-$("#sfxToggle").checked=SFX.on;
-$("#sfxToggle").addEventListener("change",e=>setSfx(e.target.checked));
+
 renderAutoTip();
 // "2초마다"를 누르면 스위치는 그대로 두고 설명만 열고 닫음 (터치 기기용)
 $("#autoEvery").addEventListener("click",e=>{e.preventDefault();e.stopPropagation();$(".tip-wrap").classList.toggle("open")});
@@ -888,6 +964,7 @@ function autoPump(){
 }
 setInterval(autoPump,250);
 function tick(){
+  if(state.points!==shownPoints) syncPoints();
   let r=remaining(), p=1-r/COOLDOWN, label;
   if(AUTO.on){
     const iv=autoInterval();
@@ -937,7 +1014,446 @@ function setupDev(force){
   };
 }
 
-function renderAll(){renderMain(false);renderStats();renderPanes()}
+/* =====================================================================
+   포인트 · 상점 · 설정
+   - 굴릴 때마다 1포인트 (직접·자동 모두). 상점 추가 전 기록은 굴린 횟수만큼 소급.
+   - 상점 품목은 모두 화면·소리·정보 표시만 바꿈. 굴리기 횟수·확률·특성 해금에는 영향 없음.
+   ===================================================================== */
+const SHOP=[
+  {cat:"화면 꾸미기",items:[
+    {id:"cursor",   name:"커서 팩",           price:1000, desc:"별·하트·픽셀 화살표 커서"},
+    {id:"btn_jelly",name:"버튼 스킨: 젤리",    price:2000, desc:"말랑하게 눌리는 둥근 버튼"},
+    {id:"fonts",    name:"글꼴 세트",          price:3000, desc:"제목·숫자 글꼴: 손글씨, 둥근, 명조"},
+    {id:"btn_pixel",name:"버튼 스킨: 픽셀",    price:3000, desc:"도트 게임 느낌의 각진 버튼"},
+    {id:"btn_metal",name:"버튼 스킨: 금속",    price:4000, desc:"빛이 스치는 금속 버튼"},
+    {id:"deco",     name:"무대 테두리 장식",   price:4000, desc:"무대 바깥 틀: 리본, 필름, 별"},
+    {id:"th_pastel",name:"테마: 파스텔",       price:5000, desc:"분홍빛 파스텔 화면"},
+    {id:"th_paper", name:"테마: 종이 노트",    price:6000, desc:"줄 노트 위에 그린 듯한 화면"},
+    {id:"th_term",  name:"테마: 레트로 터미널",price:7000, desc:"초록 글자의 옛날 컴퓨터 화면"},
+    {id:"th_neon",  name:"테마: 한밤 네온",    price:8000, desc:"어두운 밤에 빛나는 네온 화면"},
+  ]},
+  {cat:"연출과 소리",items:[
+    {id:"click",    name:"굴리기 클릭음",      price:1500, desc:"직접 굴릴 때 나는 짧은 소리"},
+    {id:"banner",   name:"등급 배너 스타일",   price:5000, desc:"\"희귀!\" 배너 모양: 도장, 네온 사인"},
+    {id:"pk_chip",  name:"효과음 팩: 칩튠",    price:8000, desc:"8비트 게임기 소리"},
+    {id:"pk_orgel", name:"효과음 팩: 오르골",  price:10000,desc:"맑고 높은 오르골 소리"},
+    {id:"pk_orch",  name:"효과음 팩: 오케스트라",price:12000,desc:"현악기처럼 부드럽게 퍼지는 소리"},
+  ]},
+  {cat:"기록과 정보",items:[
+    {id:"fmt",      name:"확률 표기 방식",     price:1000, desc:"지수, 전체 숫자, 한글 단위(1억 2,000만) 중 선택"},
+    {id:"fav",      name:"즐겨찾기",           price:2000, desc:"도감 조합에 ★ 표시, ★만 보기"},
+    {id:"naming",   name:"조합 이름 짓기",     price:4000, desc:"도감 조합에 내가 지은 이름 붙이기"},
+    {id:"archive",  name:"기록 보관함 확장",   price:6000, desc:"최근 기록 보관 100개 → 500개"},
+    {id:"stats",    name:"통계 탭",            price:10000,desc:"등급별 횟수, 가장 희귀한 결과, 직접/자동 비율, 시간대별 굴린 횟수"},
+    {id:"cardsave", name:"결과 이미지 저장",   price:15000,desc:"확대 화면의 결과를 PNG 이미지로 저장 (무대만 / 카드)"},
+  ]},
+  {cat:"수집 꾸미기",items:[
+    {id:"ti_1",     name:"칭호: 쨔무 입문자",  price:1000, desc:"제목 옆에 붙는 칭호", title:"쨔무 입문자"},
+    {id:"ti_2",     name:"칭호: 새벽의 굴림꾼",price:3000, desc:"제목 옆에 붙는 칭호", title:"새벽의 굴림꾼"},
+    {id:"ti_3",     name:"칭호: 쨔무 수집가",  price:6000, desc:"제목 옆에 붙는 칭호", title:"쨔무 수집가"},
+    {id:"ti_4",     name:"칭호: 확률의 지배자",price:12000,desc:"제목 옆에 붙는 칭호", title:"확률의 지배자"},
+    {id:"showcase", name:"진열장",             price:15000,desc:"상단에 대표 조합 최대 6개 전시"},
+    {id:"ti_5",     name:"칭호: 전설의 쨔무러",price:20000,desc:"제목 옆에 붙는 칭호", title:"전설의 쨔무러"},
+    {id:"goldbtn",  name:"금빛 굴리기 버튼",   price:30000,desc:"은은하게 빛나는 버튼, 총 굴린 횟수가 새겨짐"},
+  ]},
+];
+const SHOP_ITEM=Object.fromEntries(SHOP.flatMap(c=>c.items).map(i=>[i.id,i]));
+// 명예의 전당: 누적 사용 포인트에 따라 오르는 단계. 상단 "포인트" 칸의 배경색만 바꿈 (구매 없음)
+const HOF=[{min:10000,n:"브론즈"},{min:30000,n:"실버"},{min:60000,n:"골드"},{min:100000,n:"플래티넘"},{min:200000,n:"다이아몬드"}];
+const hofLevel=()=>{let k=-1;HOF.forEach((h,i)=>{if(state.spent>=h.min)k=i});return k};
+
+function owns(id){ return state.owned.includes(id); }
+function buy(id){
+  const it=SHOP_ITEM[id]; if(!it||owns(id)||state.points<it.price) return;
+  state.points-=it.price; state.spent+=it.price; state.owned.push(id);
+  // 산 물건은 바로 적용
+  const c=state.cfg;
+  if(id.startsWith("th_")) c.theme=id.slice(3);
+  else if(id.startsWith("btn_")) c.btn=id.slice(4);
+  else if(id==="goldbtn") c.btn="gold";
+  else if(id.startsWith("pk_")) c.pack=id.slice(3);
+  else if(id.startsWith("ti_")) c.title=id;
+  else if(id==="fonts") c.font="jua";
+  else if(id==="deco") c.deco="ribbon";
+  else if(id==="cursor") c.cursor="star";
+  else if(id==="banner") c.banner="stamp";
+  else if(id==="click") c.click=true;
+  persist(); renderAll();
+  toast(`${it.name}을(를) 샀어요. 설정 탭에서 바꿀 수 있어요.`);
+}
+function setCfg(k,v){ state.cfg[k]=v; persist(); renderAll(); }
+
+/* ---------- 화면에 적용 ---------- */
+function applyLook(){
+  const c=state.cfg, R=document.documentElement;
+  const theme=c.theme&&owns("th_"+c.theme)?c.theme:""; theme?R.dataset.skin=theme:delete R.dataset.skin;
+  const font=owns("fonts")&&c.font?c.font:""; font?R.dataset.font=font:delete R.dataset.font;
+  const cur=owns("cursor")&&c.cursor?c.cursor:""; cur?document.body.dataset.cursor=cur:delete document.body.dataset.cursor;
+  const bt=$("#rollBtn"); bt.className=bt.className.replace(/\bsk-\w+/g,"").trim();
+  const skin=c.btn==="gold"?(owns("goldbtn")?"gold":""):(c.btn&&owns("btn_"+c.btn)?c.btn:"");
+  if(skin) bt.classList.add("sk-"+skin);
+  $("#rollEngrave").textContent=skin==="gold"?"No. "+state.total.toLocaleString("ko-KR"):"";
+  const sw=$("#stageWrap"); sw.className="stage-wrap"+(owns("deco")&&c.deco?" dc-"+c.deco:"");
+  SFX.pack=c.pack&&owns("pk_"+c.pack)?c.pack:null;
+  const tb=$("#titleBadge"), ti=c.title&&owns(c.title)?SHOP_ITEM[c.title].title:"";
+  tb.hidden=!ti; tb.textContent=ti; tb.dataset.lv=ti?String(Object.keys(SHOP_ITEM).filter(k=>k.startsWith("ti_")).indexOf(c.title)+1):"";
+  const hl=hofLevel(), pts=$(".stat.pts");
+  if(hl>=0&&c.hof!==false){pts.dataset.hof=String(hl);pts.title="명예의 전당: "+HOF[hl].n} else {delete pts.dataset.hof;pts.removeAttribute("title")}
+  $("#tab-stats").hidden=!owns("stats"); if(activeTab==="stats"&&!owns("stats")) activeTab="hist";
+  renderShowcase();
+}
+
+/* ---------- 진열장 ---------- */
+function renderShowcase(){
+  const box=$("#showcase"), on=owns("showcase")&&state.cfg.showcase!==false&&state.showcase.length;
+  box.hidden=!on; box.innerHTML=""; if(!on) return;
+  const h=document.createElement("span"); h.className="sc-label"; h.textContent="진열장"; box.appendChild(h);
+  for(const k of state.showcase){ if(!state.combos[k]) continue; const ids=idsOf(k);
+    const b=document.createElement("button"); b.type="button"; b.className="sc-item"; b.title=comboName(k)||(ids.map(i=>AMAP[i].name).join(", ")||"기본 이미지");
+    b.appendChild(miniStage(ids,64,state.combos[k].n)); b.onclick=()=>openViewer(ids); box.appendChild(b); }
+}
+
+/* ---------- 즐겨찾기 · 이름 ---------- */
+const isFav=k=>owns("fav")&&state.favs.includes(k);
+const comboName=k=>owns("naming")?(state.names[k]||""):"";
+function viewerExtras(ids,serial){
+  const k=keyOf(ids), have=!!state.combos[k];
+  const box=document.createElement("div"); box.className="vx";
+  const nm=comboName(k); if(nm){const t=document.createElement("p");t.className="vx-name";t.textContent="“"+nm+"”";$("#viewInfo").prepend(t)}
+  const btnX=(label,fn,on)=>{const b=document.createElement("button");b.type="button";b.className="vx-btn"+(on?" on":"");b.textContent=label;b.onclick=fn;box.appendChild(b);return b};
+  if(have&&owns("fav")) btnX(isFav(k)?"★ 즐겨찾기":"☆ 즐겨찾기",()=>{const i=state.favs.indexOf(k);i<0?state.favs.push(k):state.favs.splice(i,1);persist();renderPanes();openViewer(ids,serial)},isFav(k));
+  if(have&&owns("showcase")){const on=state.showcase.includes(k);
+    btnX(on?"진열장에서 내리기":"진열장에 올리기",()=>{const i=state.showcase.indexOf(k);
+      if(i>=0) state.showcase.splice(i,1); else { if(state.showcase.length>=6){toast("진열장은 6칸까지예요. 하나를 내린 뒤 올려 주세요.");return} state.showcase.push(k); }
+      persist();renderShowcase();openViewer(ids,serial)},on)}
+  // 저장: 모양(무대만 / 카드) 고르고 PNG(상점 품목) 또는 GIF(한 번에 300P)
+  {
+    const ex=document.createElement("div"); ex.className="vx-export";
+    const shape=state.cfg.shotShape==="card"?"card":"stage";
+    ex.innerHTML=`<div class="seg" role="radiogroup" aria-label="저장 모양">
+        <button type="button" role="radio" data-v="stage" aria-checked="${shape==="stage"}">무대만</button>
+        <button type="button" role="radio" data-v="card" aria-checked="${shape==="card"}">카드</button></div>`;
+    ex.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{state.cfg.shotShape=b.dataset.v;persist();
+      ex.querySelectorAll(".seg button").forEach(x=>x.setAttribute("aria-checked",x===b?"true":"false"))});
+    const cur=()=>state.cfg.shotShape==="card"?"card":"stage";
+    const mk=(label,cls)=>{const b=document.createElement("button");b.type="button";b.className="vx-btn "+cls;b.textContent=label;ex.appendChild(b);return b};
+    if(owns("cardsave")){
+      const pb=mk("PNG 저장","png");
+      pb.onclick=async()=>{pb.disabled=true;pb.textContent="만드는 중…";
+        try{ await saveFile(await shotPNG(ids,serial,cur()),shotName(serial,"png")); }catch(err){ toast("이미지를 만들지 못했어요."); console.error(err); }
+        pb.disabled=false;pb.textContent="PNG 저장"};
+    }
+    const gb=mk(`GIF 만들기 · ${GIF_COST}P`,"gif");
+    // 이미 결제하고 만든 GIF가 있으면 같은 조합·모양은 다시 저장만 (추가 차감 없음)
+    const paid=()=>LAST_GIF&&LAST_GIF.k===keyOf(ids)&&LAST_GIF.shape===cur()?LAST_GIF:null;
+    const label=()=>{gb.textContent=paid()?"GIF 다시 저장 (결제됨)":`GIF 만들기 · ${GIF_COST}P`};
+    ex.querySelectorAll(".seg button").forEach(b=>b.addEventListener("click",label)); label();
+    gb.onclick=async()=>{
+      let g=paid();
+      if(!g){
+        if(state.points<GIF_COST){toast(`포인트가 모자라요. GIF 하나에 ${GIF_COST}포인트가 필요해요.`);return}
+        gb.disabled=true;
+        try{
+          const blob=await shotGIF(ids,serial,cur(),(i,n,ph)=>{gb.textContent=ph==="enc"?"GIF로 묶는 중…":`장면 찍는 중 ${i}/${n}`});
+          // 만들어진 순간에 차감
+          state.points-=GIF_COST; state.spent+=GIF_COST; persist(); renderStats(); applyLook();
+          g=LAST_GIF={k:keyOf(ids),shape:cur(),blob};
+          toast(`GIF를 만들었어요. ${GIF_COST}포인트를 사용했어요. (${(blob.size/1048576).toFixed(1)}MB)`);
+        }catch(err){ toast("GIF를 만들지 못했어요. 포인트는 그대로예요."); console.error(err); gb.disabled=false; label(); return; }
+      }
+      gb.disabled=true; gb.textContent="저장 중…";
+      if(!await saveFile(g.blob,shotName(serial,"gif"))) toast("저장을 취소했어요. 이 창을 닫기 전까지는 추가 차감 없이 다시 저장할 수 있어요.",5000);
+      gb.disabled=false; label();
+    };
+    if(state.points<GIF_COST) gb.title=`${GIF_COST}포인트가 필요해요`;
+    box.appendChild(ex);
+  }
+  if(have&&owns("naming")){
+    const w=document.createElement("label"); w.className="vx-name-edit";
+    w.innerHTML=`<span>조합 이름</span><input type="text" maxlength="24" placeholder="이름 짓기">`;
+    const inp=w.querySelector("input"); inp.value=state.names[k]||"";
+    inp.onchange=()=>{const v=inp.value.trim(); if(v) state.names[k]=v; else delete state.names[k]; persist(); renderPanes(); renderShowcase();};
+    box.appendChild(w);
+  }
+  if(box.children.length) $("#viewInfo").appendChild(box);
+}
+
+/* ---------- 결과 이미지 · GIF 저장 ----------
+   화면을 SVG(foreignObject)에 그대로 담아 캔버스에 그림.
+   GIF는 애니메이션을 멈춘 채 시간(--gt)을 조금씩 넘기며 장면을 찍고, 직접 만든 GIF 인코더로 묶음. */
+const GIF_COST=300, GIF_FPS=20, GIF_SEC=3;
+let LAST_GIF=null;   // 마지막으로 결제해서 만든 GIF (확대 화면을 닫으면 버림)
+/* 이미지 안에 넣을 페이지 CSS를 실제 스타일시트에서 자동으로 긁어옴.
+   1) 읽을 수 있는 스타일시트의 규칙  2) 같은 출처의 css 파일을 직접 받아오기 (웹 서버로 열었을 때)
+   3) 둘 다 막혔을 때만 미리 넣어 둔 사본(#shotCss / window.SHOT_CSS) 사용 (파일을 더블클릭해 열었을 때) */
+async function loadPageCSS(){
+  if(loadPageCSS.c) return loadPageCSS.c;
+  const ok=s=>s&&s.includes(".savecard");
+  let out=[];
+  for(const sh of [...document.styleSheets,...(document.adoptedStyleSheets||[])]){
+    try{ for(const r of sh.cssRules) out.push(r.cssText); }
+    catch(e){ if(sh.ownerNode&&sh.ownerNode.tagName==="STYLE") out.push(sh.ownerNode.textContent); }
+  }
+  let css=out.join("\n");
+  if(!ok(css)){
+    for(const l of document.querySelectorAll('link[rel="stylesheet"]')){
+      try{ const u=new URL(l.href,location.href); if(u.origin!==location.origin) continue;
+        const t=await (await fetch(u)).text(); if(ok(t)){ css=t; break; } }catch(e){}
+    }
+  }
+  if(!ok(css)) css=(document.getElementById("shotCss")||{}).textContent||window.SHOT_CSS||css;
+  return loadPageCSS.c=css;
+}
+function buildShot(ids,serial,shape){
+  const d=denOf(ids), t=tier(d), k=keyOf(ids);
+  const st=document.createElement("div"); st.className="stage"; st.style.width="520px"; st.style.height="520px";
+  renderStage(st,ids,{still:true,size:520,serial});
+  let node,W,H;
+  if(shape==="stage"){ st.style.borderRadius="0"; node=st; W=H=520; }
+  else{
+    W=600; H=800;
+    const card=document.createElement("div"); card.className="savecard "+(t?t.c:""); card.style.cssText=`width:${W}px;height:${H}px`;
+    card.innerHTML=`<div class="sc-top"><b>jjyamu.rng</b>${t?`<span class="tier ${t.c}">${t.n}</span>`:""}</div>`;
+    card.appendChild(st);
+    const nm=comboName(k), traits=ids.length?sortIds(ids).map(i=>AMAP[i].name).join(", "):"기본 이미지";
+    card.insertAdjacentHTML("beforeend",`<div class="sc-name">${esc(nm||traits)}</div>${nm?`<div class="sc-traits">${esc(traits)}</div>`:""}
+      <div class="sc-prob">1 / ${fmtDen(d,denBig(ids))}</div><div class="sc-foot">${serial!=null?"No. "+Number(serial).toLocaleString("ko-KR"):""}</div>`);
+    node=card;
+  }
+  const wrap=document.createElement("div"); wrap.className="shotroot"; wrap.style.cssText=`width:${W}px;height:${H}px`;
+  const sty=document.createElement("style");
+  sty.textContent=loadPageCSS.c+
+    `\n.shotroot *::before,.shotroot *::after{animation-play-state:paused!important;animation-delay:calc(0s - var(--gt,0s))!important}`;
+  wrap.append(sty,node);
+  return {wrap,W,H};
+}
+// 화면 밖에 잠깐 붙여서 계산된 애니메이션 값을 읽고, 시간 변수로 바꿔 둔 SVG 문자열을 돌려줌
+function shotTemplate(wrap,W,H){
+  const host=document.createElement("div"); host.style.cssText="position:fixed;left:-20000px;top:0;pointer-events:none;opacity:1";
+  host.appendChild(wrap); document.body.appendChild(host);
+  for(const el of wrap.querySelectorAll("*")){
+    const cs=getComputedStyle(el); if(!cs.animationName||cs.animationName==="none") continue;
+    el.style.animationDelay=cs.animationDelay.split(",").map(d=>`calc(${d.trim()} - var(--gt))`).join(",");
+    el.style.animationPlayState="paused";
+  }
+  wrap.querySelectorAll('feTurbulence[type="turbulence"]').forEach(f=>f.setAttribute("seed","__SEED__"));   // 낙서 선 떨림
+  wrap.querySelectorAll("animate").forEach(a=>a.setAttribute("begin","__NEG__"));                            // SVG 필터 애니메이션
+  wrap.style.setProperty("--gt","__T__");
+  const x=new XMLSerializer().serializeToString(wrap);
+  host.remove();
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><foreignObject x="0" y="0" width="${W}" height="${H}">${x}</foreignObject></svg>`;
+}
+async function drawShot(tpl,t,g,w,h){
+  const svg=tpl.replace(/__T__/g,t.toFixed(3)+"s").replace(/__NEG__/g,(-t).toFixed(3)+"s").replace(/__SEED__/g,String(7*(Math.floor(t/.13)%4+1)));
+  const img=new Image(); img.decoding="sync";
+  await new Promise((ok,no)=>{img.onload=ok;img.onerror=no;img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg)});
+  g.drawImage(img,0,0,w,h);
+}
+async function shotPNG(ids,serial,shape){
+  await loadPageCSS();
+  const {wrap,W,H}=buildShot(ids,serial,shape); const tpl=shotTemplate(wrap,W,H);
+  const cv=document.createElement("canvas"); cv.width=W*2; cv.height=H*2; const g=cv.getContext("2d");
+  await drawShot(tpl,0,g,W*2,H*2); await new Promise(r=>setTimeout(r,30)); g.clearRect(0,0,W*2,H*2); await drawShot(tpl,0,g,W*2,H*2);
+  return await new Promise(r=>cv.toBlob(r,"image/png"));
+}
+async function shotGIF(ids,serial,shape,onProg){
+  await loadPageCSS();
+  const {wrap,W,H}=buildShot(ids,serial,shape); const tpl=shotTemplate(wrap,W,H);
+  const s=shape==="stage"?360/W:360/W, w=Math.round(W*s), h=Math.round(H*s);
+  const cv=document.createElement("canvas"); cv.width=w; cv.height=h; const g=cv.getContext("2d",{willReadFrequently:true});
+  const n=GIF_FPS*GIF_SEC, frames=[];
+  await drawShot(tpl,0,g,w,h);   // 첫 장은 글꼴·이미지 준비용
+  for(let i=0;i<n;i++){
+    g.fillStyle="#fff"; g.fillRect(0,0,w,h);
+    await drawShot(tpl,i/GIF_FPS,g,w,h);
+    frames.push(g.getImageData(0,0,w,h).data);
+    onProg&&onProg(i+1,n);
+    if(i%4===3) await new Promise(r=>setTimeout(r,0));
+  }
+  onProg&&onProg(n,n,"enc"); await new Promise(r=>setTimeout(r,20));
+  return new Blob([gifEncode(frames,w,h,Math.round(100/GIF_FPS))],{type:"image/gif"});
+}
+/* GIF 인코더: 전체 장면에서 색을 모아 256색 팔레트(미디언 컷)를 만들고 LZW로 압축 */
+function medianCut(px,n){
+  const ch=(c,k)=>(c>>(16-8*k))&255;
+  const info=b=>{let mn=[255,255,255],mx=[0,0,0];for(const c of b)for(let k=0;k<3;k++){const v=ch(c,k);if(v<mn[k])mn[k]=v;if(v>mx[k])mx[k]=v}
+    const r=[mx[0]-mn[0],mx[1]-mn[1],mx[2]-mn[2]],k=r[1]>=r[0]&&r[1]>=r[2]?1:r[0]>=r[2]?0:2;return {b,k,score:r[k]*Math.sqrt(b.length)}};
+  let boxes=[info(px)];
+  while(boxes.length<n){
+    let bi=-1,best=0; boxes.forEach((x,i)=>{if(x.b.length>1&&x.score>best){best=x.score;bi=i}}); if(bi<0)break;
+    const {b,k}=boxes[bi]; b.sort((a,c)=>ch(a,k)-ch(c,k)); const m=b.length>>1;
+    boxes.splice(bi,1,info(b.slice(0,m)),info(b.slice(m)));
+  }
+  return boxes.map(({b})=>{let r=0,g=0,bl=0;for(const c of b){r+=ch(c,0);g+=ch(c,1);bl+=ch(c,2)}const l=b.length||1;return [Math.round(r/l),Math.round(g/l),Math.round(bl/l)]});
+}
+function gifEncode(frames,W,H,delayCs){
+  const step=Math.max(1,Math.floor(frames.length*W*H/80000)), samp=[]; let c=0;
+  for(const f of frames) for(let i=0;i<W*H;i++) if((c++)%step===0) samp.push((f[i*4]<<16)|(f[i*4+1]<<8)|f[i*4+2]);
+  const pal=medianCut(samp,256); while(pal.length<256) pal.push([0,0,0]);
+  const cache=new Int16Array(32768).fill(-1);
+  const near=(r,g,b)=>{const key=((r>>3)<<10)|((g>>3)<<5)|(b>>3);let v=cache[key];if(v>=0)return v;
+    let bi=0,bd=1e12;for(let j=0;j<256;j++){const p=pal[j],dr=r-p[0],dg=g-p[1],db=b-p[2],d=2*dr*dr+4*dg*dg+3*db*db;if(d<bd){bd=d;bi=j}}
+    return cache[key]=bi};
+  const out=[]; const b8=v=>out.push(v&255), b16=v=>{out.push(v&255,(v>>8)&255)}, str=s=>{for(const ch of s)out.push(ch.charCodeAt(0))};
+  str("GIF89a"); b16(W); b16(H); b8(0xF7); b8(0); b8(0);
+  for(const p of pal) out.push(p[0],p[1],p[2]);
+  out.push(0x21,0xFF,11); str("NETSCAPE2.0"); out.push(3,1,0,0,0);   // 무한 반복
+  const idx=new Uint8Array(W*H);
+  for(const f of frames){
+    for(let i=0;i<W*H;i++) idx[i]=near(f[i*4],f[i*4+1],f[i*4+2]);
+    out.push(0x21,0xF9,4,0); b16(delayCs); out.push(0,0);
+    out.push(0x2C); b16(0); b16(0); b16(W); b16(H); out.push(0);
+    out.push(8); const data=lzw(idx,8);
+    for(let i=0;i<data.length;i+=255){const n=Math.min(255,data.length-i);out.push(n);for(let j=0;j<n;j++)out.push(data[i+j])}
+    out.push(0);
+  }
+  out.push(0x3B);
+  return new Uint8Array(out);
+}
+function lzw(idx,minCode){
+  const out=[]; let cur=0,bits=0; const emit=(code,size)=>{cur|=code<<bits;bits+=size;while(bits>=8){out.push(cur&255);cur>>>=8;bits-=8}};
+  const clear=1<<minCode, eoi=clear+1; let size=minCode+1, next=eoi+1, dict=new Map();
+  emit(clear,size);
+  let prefix=idx[0];
+  for(let i=1;i<idx.length;i++){
+    const k=idx[i], key=(prefix<<8)|k, v=dict.get(key);
+    if(v!==undefined){prefix=v;continue}
+    emit(prefix,size);
+    if(next===4096){ emit(clear,size); dict=new Map(); size=minCode+1; next=eoi+1; }
+    else { if(next>=(1<<size)) size++; dict.set(key,next++); }
+    prefix=k;
+  }
+  emit(prefix,size); emit(eoi,size); if(bits>0) out.push(cur&255);
+  return out;
+}
+async function saveFile(blob,name){
+  const dl=window.claude&&window.claude.use?await window.claude.use("downloads"):null;
+  if(dl){ try{ await dl.save({filename:name,data:blob}); return true; }
+    catch(e){ if(e&&(e.code==="declined"||e.code==="rate_limited")) return false; } }
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000); return true;
+}
+const shotName=(serial,ext)=>`jjyamu${serial!=null?"-No"+serial:""}.${ext}`;
+
+/* ---------- 클릭음 ---------- */
+function playClick(){
+  if(!SFX.on||!owns("click")||state.cfg.click===false) return;
+  const ctx=audioCtx(); if(!ctx) return; sfxBus(ctx); const t=ctx.currentTime+.005;
+  sfxTone(ctx,SFX.out,1318.5,t,.05,{type:"triangle",gain:.07,att:.002,rel:.025,verb:.1});
+  sfxTone(ctx,SFX.out,1975.5,t+.03,.06,{type:"triangle",gain:.045,att:.002,rel:.03,verb:.15});
+}
+
+/* ---------- 알림 띠 ---------- */
+function toast(msg,ms=3200){
+  let t=$("#toast"); if(!t){t=document.createElement("div");t.id="toast";t.className="toast";t.setAttribute("role","status");document.body.appendChild(t)}
+  t.textContent=msg; t.classList.add("on"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("on"),ms);
+}
+
+/* ---------- 상점 탭 ---------- */
+function renderShop(){
+  const pane=$("#pane-shop"); const sc=pane.scrollTop; pane.innerHTML="";
+  const hl=hofLevel(), nx=HOF[hl+1];
+  pane.insertAdjacentHTML("beforeend",`<div class="shop-head"><div><span>보유 포인트</span><b id="shopPoints">${state.points.toLocaleString("ko-KR")}</b></div>
+    <p>굴릴 때마다 1포인트씩 쌓여요. 상점 물건은 화면과 소리만 바꾸고, 확률이나 굴리기에는 영향을 주지 않아요.</p>
+    <p class="hof-line">명예의 전당: <b>${hl>=0?HOF[hl].n:"아직 없음"}</b> · 누적 사용 ${state.spent.toLocaleString("ko-KR")}포인트${nx?` · 다음 단계(${nx.n})까지 ${(nx.min-state.spent).toLocaleString("ko-KR")}`:""}</p></div>`);
+  for(const c of SHOP){
+    const sec=document.createElement("section"); sec.className="shop-cat"; sec.innerHTML=`<h3>${c.cat}</h3>`;
+    const grid=document.createElement("div"); grid.className="shop-grid";
+    for(const it of c.items){
+      const own=owns(it.id), can=state.points>=it.price;
+      const d=document.createElement("div"); d.className="shop-item"+(own?" owned":"");
+      d.innerHTML=`<div class="si-name">${esc(it.name)}</div><div class="si-desc">${esc(it.desc)}</div>`;
+      const b=document.createElement("button"); b.type="button"; b.className="si-buy";
+      if(own){b.textContent="보유 중";b.disabled=true}
+      else{b.textContent=it.price.toLocaleString("ko-KR")+"P";b.dataset.price=it.price;b.disabled=!can;b.title=can?"사기":"포인트가 부족해요";b.onclick=()=>buy(it.id)}
+      d.appendChild(b); grid.appendChild(d);
+    }
+    sec.appendChild(grid); pane.appendChild(sec);
+  }
+  pane.scrollTop=sc;
+}
+
+/* ---------- 설정 탭 ---------- */
+function renderSettings(){
+  const pane=$("#pane-set"); pane.innerHTML=""; const c=state.cfg;
+  const sec=title=>{const s=document.createElement("section");s.className="set-sec";s.innerHTML=`<h3>${title}</h3>`;pane.appendChild(s);return s};
+  const row=(s,label,ctrl,note)=>{const r=document.createElement("div");r.className="set-row";
+    const l=document.createElement("span");l.className="set-l";l.textContent=label;r.appendChild(l);
+    const right=document.createElement("div");right.className="set-r";if(ctrl)right.appendChild(ctrl);
+    if(note){const n=document.createElement("small");n.className="set-note";n.textContent=note;right.appendChild(n)}
+    r.appendChild(right);s.appendChild(r)};
+  const lock=ids=>{const b=document.createElement("button");b.type="button";b.className="set-lock";
+    const ps=ids.map(i=>SHOP_ITEM[i].price), lo=Math.min(...ps);
+    b.textContent=`🔒 상점에서 ${lo.toLocaleString("ko-KR")}P`+(ps.length>1?"부터":""); b.onclick=()=>showTab("shop"); return b};
+  const toggle=(on,fn)=>{const l=document.createElement("label");l.className="auto-toggle set-sw";
+    l.innerHTML=`<input type="checkbox" role="switch"${on?" checked":""}><span class="sw" aria-hidden="true"></span>`;
+    l.querySelector("input").onchange=e=>fn(e.target.checked); return l};
+  const select=(opts,val,fn)=>{const s=document.createElement("select");s.className="set-sel";
+    s.innerHTML=opts.map(([v,n])=>`<option value="${v}"${v===(val||"")?" selected":""}>${n}</option>`).join(""); s.onchange=e=>fn(e.target.value); return s};
+  // 선택지: 기본 + 산 것들. 하나도 없으면 상점 안내
+  const choice=(s,label,key,variants,note)=>{
+    const have=variants.filter(v=>owns(v.item));
+    if(!have.length){row(s,label,lock([...new Set(variants.map(v=>v.item))]),note);return}
+    row(s,label,select([["","기본"],...have.map(v=>[v.v,v.n])],c[key],v=>setCfg(key,v||undefined)),note)};
+
+  let s=sec("소리");
+  row(s,"효과음",toggle(SFX.on,on=>setSfx(on)),"영웅 이상 결과의 화음과 연출 효과음");
+  choice(s,"효과음 팩","pack",[{v:"chip",n:"칩튠",item:"pk_chip"},{v:"orgel",n:"오르골",item:"pk_orgel"},{v:"orch",n:"오케스트라",item:"pk_orch"}]);
+  owns("click")?row(s,"굴리기 클릭음",toggle(c.click!==false,on=>setCfg("click",on))):row(s,"굴리기 클릭음",lock(["click"]));
+  if(SFX.on&&(SFX.pack||owns("click"))){const b=document.createElement("button");b.type="button";b.className="set-lock";b.textContent="▶ 미리 듣기";
+    b.onclick=()=>{const ctx=audioCtx();if(!ctx)return;sfxBus(ctx);revealChord(3);setTimeout(playClick,900)};row(s,"",b)}
+
+  s=sec("화면");
+  choice(s,"테마","theme",[{v:"pastel",n:"파스텔",item:"th_pastel"},{v:"paper",n:"종이 노트",item:"th_paper"},{v:"term",n:"레트로 터미널",item:"th_term"},{v:"neon",n:"한밤 네온",item:"th_neon"}]);
+  choice(s,"글꼴","font",[{v:"pen",n:"손글씨",item:"fonts"},{v:"jua",n:"둥근",item:"fonts"},{v:"batang",n:"명조",item:"fonts"}]);
+  choice(s,"굴리기 버튼","btn",[{v:"jelly",n:"젤리",item:"btn_jelly"},{v:"pixel",n:"픽셀",item:"btn_pixel"},{v:"metal",n:"금속",item:"btn_metal"},{v:"gold",n:"금빛",item:"goldbtn"}]);
+  choice(s,"무대 테두리","deco",[{v:"ribbon",n:"리본",item:"deco"},{v:"film",n:"필름",item:"deco"},{v:"stars",n:"별",item:"deco"}]);
+  choice(s,"커서","cursor",[{v:"star",n:"별",item:"cursor"},{v:"heart",n:"하트",item:"cursor"},{v:"pixel",n:"픽셀 화살표",item:"cursor"}]);
+
+  s=sec("연출");
+  choice(s,"등급 배너","banner",[{v:"stamp",n:"도장",item:"banner"},{v:"neon",n:"네온 사인",item:"banner"}]);
+  if(owns("banner")){const b=document.createElement("button");b.type="button";b.className="set-lock";b.textContent="▶ 연출 미리 보기";
+    b.onclick=()=>{if(!CINE.active)cinematic({level:4,d:3.7e8,exact:"370,000,000"})};row(s,"",b)}
+
+  s=sec("표시");
+  owns("fmt")?row(s,"확률 표기",select([["","기본 (1조부터 지수)"],["full","전체 숫자"],["exp","지수 (1만부터)"],["kor","한글 단위"]],c.fmt,v=>setCfg("fmt",v||undefined)),"예: 1 / "+fmtDen(123456789,123456789n))
+             :row(s,"확률 표기",lock(["fmt"]));
+  const titles=SHOP.flatMap(x=>x.items).filter(i=>i.title);
+  choice(s,"칭호","title",titles.map(i=>({v:i.id,n:i.title,item:i.id})));
+  row(s,"명예의 전당 색",hofLevel()>=0?toggle(c.hof!==false,on=>setCfg("hof",on)):null,hofLevel()>=0?"상단 '포인트' 칸의 배경색이 단계에 따라 바뀌어요":"포인트를 1만 이상 쓰면 생겨요");
+  owns("showcase")?row(s,"진열장 보이기",toggle(c.showcase!==false,on=>setCfg("showcase",on)),"도감에서 조합을 열어 진열장에 올릴 수 있어요"):row(s,"진열장",lock(["showcase"]));
+}
+
+/* ---------- 통계 탭 ---------- */
+function renderStatsPane(){
+  const pane=$("#pane-stats"); pane.innerHTML="";
+  const all=Object.entries(state.combos).map(([k,v])=>({k,ids:idsOf(k),c:v.c,n:v.n,d:denOf(idsOf(k))}));
+  const byTier=Array(TIERS.length).fill(0); let tot=0;
+  for(const e of all){const t=tier(e.d); byTier[t?t.i:0]+=e.c; tot+=e.c}
+  const pct=v=>!tot||!v?"0%":(v/tot*100).toFixed(v/tot<.001?3:1)+"%";
+  const top=all.slice().sort((a,b)=>b.d-a.d)[0];
+  const ma=state.manual+state.auto;
+  const hmax=Math.max(1,...state.hours);
+  pane.innerHTML=`<div class="st-grid">
+      <div class="st-box"><span>굴린 횟수</span><b>${state.total.toLocaleString("ko-KR")}</b></div>
+      <div class="st-box"><span>모은 조합</span><b>${all.length.toLocaleString("ko-KR")}</b></div>
+      <div class="st-box"><span>발견한 속성</span><b>${ATTRS.filter(a=>discovered(a.id)).length}/${ATTRS.length}</b></div>
+      <div class="st-box"><span>사용한 포인트</span><b>${state.spent.toLocaleString("ko-KR")}</b></div></div>
+    <h3 class="st-h">등급별 횟수</h3>
+    <table class="st-table">${TIERS.map((t,i)=>byTier[i]||i<=4?`<tr><td><span class="tier t${i}">${t.n}</span></td><td>${byTier[i].toLocaleString("ko-KR")}번</td><td>${pct(byTier[i])}</td></tr>`:"").join("")}</table>
+    <h3 class="st-h">가장 희귀한 결과</h3><div class="st-top" id="stTop">${top?"":"<p class='help'>아직 없어요.</p>"}</div>
+    <h3 class="st-h">직접 / 자동 <small>(v7부터 집계)</small></h3>
+    ${ma?`<div class="st-bar"><i style="width:${(state.manual/ma*100).toFixed(1)}%"></i></div><p class="help">직접 ${state.manual.toLocaleString("ko-KR")}번 · 자동 ${state.auto.toLocaleString("ko-KR")}번</p>`:"<p class='help'>아직 집계된 굴리기가 없어요.</p>"}
+    <h3 class="st-h">시간대별 굴린 횟수 <small>(v7부터 집계)</small></h3>
+    <div class="st-hours">${state.hours.map((v,i)=>`<div title="${i}시: ${v.toLocaleString("ko-KR")}번"><i style="height:${(v/hmax*100).toFixed(1)}%"></i><span>${i%6===0?i:""}</span></div>`).join("")}</div>`;
+  if(top){const b=document.createElement("button");b.type="button";b.className="card st-topcard";b.appendChild(miniStage(top.ids,96,top.n));
+    const tt=tier(top.d);
+    b.insertAdjacentHTML("beforeend",`<div><div class="p">1/${fmtDen(top.d,denBig(top.ids))} ${tt?`<span class="tier ${tt.c}">${tt.n}</span>`:""}</div>
+      <div class="n">${esc(comboName(top.k)||(top.ids.map(i=>AMAP[i].name).join(", ")||"기본 이미지"))}</div><div class="c">${top.c}번 뽑음</div></div>`);
+    b.onclick=()=>openViewer(top.ids); $("#stTop").appendChild(b)}
+}
+
+function renderAll(){applyLook();renderMain(false);renderStats();renderPanes()}
 
 /* boot */
 const local=loadLocal(); if(local) state=local;

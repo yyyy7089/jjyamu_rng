@@ -6,26 +6,27 @@
 <title>jjyamu.rng</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&family=Gowun+Batang:wght@700&family=Jua&family=Nanum+Pen+Script&family=IBM+Plex+Sans+KR:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <header class="top">
-  <h1>jjyamu.rng</h1>
+  <div class="brand"><h1>jjyamu.rng</h1><span class="title-badge" id="titleBadge" hidden></span></div>
   <div class="stats">
     <span class="stat">굴린 횟수<b id="sTotal">0</b></span>
     <span class="stat">발견한 속성<b id="sFound">0</b></span>
     <span class="stat">모은 조합<b id="sCombos">0</b></span>
+    <span class="stat pts">포인트<b id="sPoints">0</b></span>
   </div>
 </header>
+<div class="showcase" id="showcase" hidden></div>
 
 <main class="layout">
   <section class="play" aria-label="굴리기">
-    <div class="stage" id="mainStage" aria-live="polite"></div>
-    <button class="roll" id="rollBtn" type="button"><i class="fill"></i><span id="rollLabel">굴리기</span></button>
+    <div class="stage-wrap" id="stageWrap"><div class="stage" id="mainStage" aria-live="polite"></div></div>
+    <button class="roll" id="rollBtn" type="button"><i class="fill"></i><span id="rollLabel">굴리기</span><small class="engrave" id="rollEngrave"></small></button>
     <div class="toggles">
       <label class="auto-toggle"><input type="checkbox" id="autoRoll" role="switch"><span class="sw" aria-hidden="true"></span>자동 굴리기 <span class="tip-wrap"><small id="autoEvery" tabindex="0" aria-describedby="autoTip">2초마다</small><span class="tip" id="autoTip" role="tooltip"></span></span></label>
-      <label class="auto-toggle" title="희귀 이상 결과의 화음과 연출 효과음"><input type="checkbox" id="sfxToggle" role="switch"><span class="sw" aria-hidden="true"></span>효과음</label>
     </div>
     <p class="low-note" id="lowNote" hidden>🔈 백그라운드 동작을 위해 들리지 않는 저주파를 재생 중이에요.</p>
     <p class="hint" id="rollHint">스페이스바로도 굴릴 수 있어요. 1초마다 한 번씩 굴릴 수 있어요.</p>
@@ -43,6 +44,9 @@
       <button role="tab" id="tab-hist" aria-selected="true" aria-controls="pane-hist">기록</button>
       <button role="tab" id="tab-col" aria-selected="false" aria-controls="pane-col">도감</button>
       <button role="tab" id="tab-attr" aria-selected="false" aria-controls="pane-attr">속성<small id="attrCount"></small></button>
+      <button role="tab" id="tab-stats" aria-selected="false" aria-controls="pane-stats" hidden>통계</button>
+      <button role="tab" id="tab-shop" aria-selected="false" aria-controls="pane-shop">상점</button>
+      <button role="tab" id="tab-set" aria-selected="false" aria-controls="pane-set">설정</button>
       <button role="tab" id="tab-credit" aria-selected="false" aria-controls="pane-credit">크레딧</button>
     </div>
     <div class="pane" id="pane-hist" role="tabpanel"></div>
@@ -52,6 +56,7 @@
         <span id="colSummary"></span>
         <span>
           <button class="clear" id="clearFilters" type="button" hidden>필터 지우기</button>
+          <label class="favonly" id="favOnlyWrap" hidden><input type="checkbox" id="favOnly"> ★만</label>
           <select id="minTier" aria-label="등급"></select>
           <select id="sort" aria-label="정렬">
             <option value="rare">희귀한 순</option>
@@ -67,6 +72,9 @@
       <p class="help">한 번이라도 뽑은 속성만 이름과 확률이 보여요.</p>
       <div class="dex" id="dex"></div>
     </div>
+    <div class="pane" id="pane-stats" role="tabpanel" hidden></div>
+    <div class="pane" id="pane-shop" role="tabpanel" hidden></div>
+    <div class="pane" id="pane-set" role="tabpanel" hidden></div>
     <div class="pane" id="pane-credit" role="tabpanel" hidden>
       <dl class="credits">
         <div><dt>제작</dt><dd>Claude AI를 이용해 제작됨</dd></div>
@@ -77,6 +85,9 @@
           <dd>Do Hyeon 폰트</dd><p class="lic">우아한형제들, SIL Open Font License 1.1</p>
           <dd>IBM Plex Sans KR 폰트</dd><p class="lic">IBM, SIL Open Font License 1.1</p>
           <dd>Black Han Sans 폰트</dd><p class="lic">Zess Type, SIL Open Font License 1.1</p>
+          <dd>Jua 폰트</dd><p class="lic">우아한형제들, SIL Open Font License 1.1</p>
+          <dd>Nanum Pen Script 폰트</dd><p class="lic">Sandoll Communication, SIL Open Font License 1.1</p>
+          <dd>Gowun Batang 폰트</dd><p class="lic">류양희, SIL Open Font License 1.1</p>
           <dd>Twemoji (💀, ☠️, 🛐, ↖️ 이미지)</dd><p class="lic">Twitter, Inc 및 기여자, CC-BY 4.0</p>
           <p class="lic" style="margin-top:8px">폰트는 Google Fonts를 통해 불러옵니다. 모든 효과는 외부 라이브러리 없이 순수 HTML, CSS, JavaScript로 구현했습니다.</p>
         </div>
@@ -94,6 +105,7 @@
 
 <script src="js/base-image.js"></script>
 <script src="js/badge-images.js"></script>
+<script src="js/shot-css.js"></script>
 <script src="js/attributes.js"></script>
 <script src="js/game.js"></script>
 </body>
